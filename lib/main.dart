@@ -140,11 +140,7 @@ class _HomeState extends State<Home>{
       FilledButton.icon(onPressed:exportBackup,icon:const Icon(Icons.lock_outline),label:const Text('خروجی رمزگذاری‌شده')),
       OutlinedButton.icon(onPressed:importBackup,icon:const Icon(Icons.restore),label:const Text('بازیابی از فایل'))])),
     GolpoolStyle.section('هزینه‌های تکراری'),
-    ...recurring.map((entry)=>GolpoolStyle.panel(child:Column(children:[
-      SwitchListTile(title:Text(entry['name'].toString()),subtitle:Text('${money(entry['amount'] as num)} · روز ${entry['day']} هر ماه'),value:entry['active']==true,
-        onChanged:(v){entry['active']=v;changed();}),
-      Row(children:[TextButton.icon(onPressed:()=>recordRecurring(entry),icon:const Icon(Icons.check_circle_outline),label:const Text('ثبت پرداخت')),
-        const Spacer(),IconButton(onPressed:()=>removeRecurring(entry),icon:const Icon(Icons.delete_outline))])])),
+    ...recurring.map(recurringTile),
     FilledButton.tonalIcon(onPressed:addRecurring,icon:const Icon(Icons.add),label:const Text('هزینه تکراری جدید')),
     ...debts.map((d)=>GolpoolStyle.panel(child:ListTile(title:Text(d['person'].toString()),subtitle:Text(money(d['amount'] as num)),trailing:Switch(value:d['settled']==true,onChanged:(v){d['settled']=v;changed();})))),
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
@@ -377,6 +373,21 @@ class _HomeState extends State<Home>{
   final amount=int.tryParse(await ask('سقف بودجه (تومان)')??'');
   if(amount==null||amount<=0)return;
   budgets[name.trim()]=amount;changed();
+ }
+ Widget recurringTile(Map<String,dynamic> entry) {
+   final name=entry['name']?.toString()??'هزینه';
+   final amount=entry['amount'] is num ? (entry['amount'] as num) : 0;
+   final day=entry['day']?.toString()??'-';
+   return GolpoolStyle.panel(child:Column(children:[
+     SwitchListTile(title:Text(name),subtitle:Text('${money(amount)} · روز $day هر ماه'),
+       value:entry['active']==true,onChanged:(v){entry['active']=v;changed();}),
+     Row(children:[
+       TextButton.icon(onPressed:()=>recordRecurring(entry),
+         icon:const Icon(Icons.check_circle_outline),label:const Text('ثبت پرداخت')),
+       const Spacer(),
+       IconButton(onPressed:()=>removeRecurring(entry),icon:const Icon(Icons.delete_outline))
+     ])
+   ]));
  }
  Future<void> addRecurring()async{
   if(recurring.length>=100){info('حداکثر ۱۰۰ هزینه تکراری قابل ثبت است.');return;}
