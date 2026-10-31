@@ -116,9 +116,16 @@ class _HomeState extends State<Home>{
     })]);
    case 3:return ListView(children:[
     GolpoolStyle.section('هدف‌های پس‌انداز'),
-    ...goals.map((g)=>GolpoolStyle.goalCard(g['name'].toString(),money(g['saved'] as int),
-      money(g['target'] as int),MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,
-      ()=>saveGoal(g))),
+    ...goals.map((g)=>Column(children:[
+      if(g['image'] is String)GolpoolStyle.panel(child:ClipRRect(
+        borderRadius:BorderRadius.circular(18),child:Image.memory(base64Decode(g['image'] as String),
+          height:135,width:double.infinity,fit:BoxFit.cover))),
+      GolpoolStyle.goalCard(g['name'].toString(),money(g['saved'] as int),
+        money(g['target'] as int),MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,
+        ()=>saveGoal(g)),
+      TextButton.icon(onPressed:()=>attachGoalPhoto(g),icon:const Icon(Icons.add_photo_alternate_outlined),
+        label:const Text('تصویر هدف'))
+    ])),
     ...goals.map((g)=>Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()=>editGoal(g),icon:const Icon(Icons.tune),label:Text('مدیریت ${g['name']}'))),const SizedBox(width:9),IconButton(onPressed:()=>goalHistory(g),icon:const Icon(Icons.history),tooltip:'تاریخچه هدف')])),
     FilledButton.icon(onPressed:addGoal,icon:const Icon(Icons.add),label:const Text('هدف جدید'))]);
    default:return ListView(children:[
@@ -181,6 +188,20 @@ class _HomeState extends State<Home>{
      if(mounted)setState((){});
      info('رسید ذخیره شد.');
    }catch(_){info('دسترسی به تصویر یا ذخیره آن ممکن نشد.');}
+ }
+ Future<void> attachGoalPhoto(Map<String,dynamic> goal)async{
+   try{
+     final picked=await ImagePicker().pickImage(source:ImageSource.gallery,
+       maxWidth:900,imageQuality:48);
+     if(picked==null)return;
+     final bytes=await picked.readAsBytes();
+     if(bytes.length>220000){info('تصویر هدف بیش از حد بزرگ است.');return;}
+     final old=goal['image'];
+     goal['image']=base64Encode(bytes);
+     await _persist();
+     if(secureError){goal['image']=old;return;}
+     if(mounted)setState((){});
+   }catch(_){info('انتخاب تصویر هدف انجام نشد.');}
  }
  Future<void> showReceipt(Map<String,dynamic> transaction)async{
    final b=transaction['receipt'];
