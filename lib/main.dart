@@ -25,6 +25,8 @@ class _HomeState extends State<Home>{
  bool dataReady=false;
  bool secureError=false;
  bool remindersEnabled=false;
+ bool biometricLock=false;
+ bool unlocked=true;
  final FinancialReminders reminders=FinancialReminders();
  @override void initState(){super.initState();_load();}
  Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}
@@ -32,8 +34,12 @@ class _HomeState extends State<Home>{
     final savedBudgets=data['budgets']; if(savedBudgets is Map){budgets..clear()..addAll(savedBudgets.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedGoals=data['goals']; if(savedGoals is List){goals..clear()..addAll(savedGoals.map((x)=>Map<String,dynamic>.from(x as Map)));}
     remindersEnabled=data['remindersEnabled']==true;
-    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}if(widget.store==null){try{await reminders.initialize();await _refreshReminders();}catch(_){/* not available on this device */}}if(mounted)setState(()=>dataReady=true);}
- Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled});}catch(_){if(mounted)setState(()=>secureError=true);}}
+    biometricLock=data['biometricLock']==true;
+    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}if(widget.store==null){try{await reminders.initialize();await _refreshReminders();}catch(_){/* not available on this device */}}
+   if(biometricLock&&widget.store==null){unlocked=false;}
+   if(mounted)setState(()=>dataReady=true);
+   if(!unlocked)await unlockDevice();}
+ Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled,'biometricLock':biometricLock});}catch(_){if(mounted)setState(()=>secureError=true);}}
  Future<void> changed() async {if(mounted)setState((){});await _persist();if(!secureError)await _refreshReminders();}
  Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);}catch(_){if(mounted)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
  Future<void> toggleReminders(bool value)async{if(value){try{if(!await reminders.enable()){info('مجوز اعلان داده نشد.');return;}}catch(_){info('اعلان روی این دستگاه در دسترس نیست.');return;}}setState(()=>remindersEnabled=value);await _persist();await _refreshReminders();}
@@ -95,6 +101,7 @@ class _HomeState extends State<Home>{
       title:const Text('یادآوری شبانه'),
       subtitle:const Text('۲۱:۰۰ و ۲۲:۳۰، فقط وقتی خرج نامشخص باقی مانده باشد؛ ساعت تقریبی'),
       value:remindersEnabled,onChanged:toggleReminders)),
+    GolpoolStyle.panel(child:SwitchListTile(title:const Text('قفل ورود دستگاه'),subtitle:const Text('استفاده از اثر انگشت، چهره یا رمز دستگاه در صورت پشتیبانی'),value:biometricLock,onChanged:toggleBiometrics)),
     GolpoolStyle.section('پشتیبان‌گیری امن'),
     GolpoolStyle.panel(child:Column(children:[
       const Text('فایل پشتیبان با رمز انتخابی شما رمزگذاری می‌شود. رمز را فراموش نکنید.'),
@@ -105,7 +112,19 @@ class _HomeState extends State<Home>{
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
   }
  }
- Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled};
+ Future<void> unlockDevice()async {
+   final success=await DeviceUnlock().unlock();
+   if(mounted)setState(()=>unlocked=success);
+ }
+ Future<void> toggleBiometrics(bool enabled)async {
+   if(enabled){
+     final ok=await DeviceUnlock().unlock();
+     if(!ok){info('احراز هویت دستگاه موفق نشد؛ قفل فعال نشد.');return;}
+   }
+   setState(()=>biometricLock=enabled);
+   await _persist();
+ }
+ Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled,'biometricLock':biometricLock};
  Future<String?> passwordPrompt(String title) async {
    final c=TextEditingController();
    final value=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
@@ -173,7 +192,8 @@ class _HomeState extends State<Home>{
        budgets..clear()..addAll((result['budgets'] as Map).map((k,v)=>MapEntry(k.toString(),(v as num).round())));
        goals..clear()..addAll((result['goals'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
        debts..clear()..addAll((result['debts'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
-       remindersEnabled=result['remindersEnabled']==true;});
+       remindersEnabled=result['remindersEnabled']==true;
+       biometricLock=result['biometricLock']==true;});
      await _refreshReminders();
      info('بازیابی موفق بود.');
    }catch(_){info('رمز نادرست یا فایل نامعتبر است؛ اطلاعات تغییر نکرد.');}
@@ -264,9 +284,9 @@ class _HomeState extends State<Home>{
  }
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
   appBar:AppBar(toolbarHeight:83,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('یه همراه کوچولو برای پول‌هات 🌸',style:TextStyle(fontSize:12,color:GolpoolStyle.muted)),const SizedBox(height:4),Text(['خانه','تراکنش‌ها','بودجه ماهانه','هدف‌های من','بیشتر'][tab],style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:GolpoolStyle.ink))]),actions:[Padding(padding:const EdgeInsets.only(left:14),child:GolpoolStyle.bubble(Icons.notifications_none_rounded))]),
-  body:!dataReady?const Center(child:CircularProgressIndicator()):secureError?const Center(child:Text('خطای ذخیره‌سازی امن؛ برای حفاظت از داده‌ها ثبت اطلاعات متوقف شد.')):Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:screen()),
-  floatingActionButton:tab==1&&dataReady&&!secureError?FloatingActionButton(backgroundColor:GolpoolStyle.rose,foregroundColor:Colors.white,onPressed:addTx,child:const Icon(Icons.add)):null,
-  bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [
+  body:!dataReady?const Center(child:CircularProgressIndicator()):!unlocked?Center(child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.lock_outline,size:55,color:GolpoolStyle.rose),const SizedBox(height:15),const Text('ورود امن به گل‌پول'),const SizedBox(height:14),FilledButton.icon(onPressed:unlockDevice,icon:const Icon(Icons.fingerprint),label:const Text('بازکردن قفل دستگاه'))])):secureError?const Center(child:Text('خطای ذخیره‌سازی امن؛ برای حفاظت از داده‌ها ثبت اطلاعات متوقف شد.')):Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:screen()),
+  floatingActionButton:tab==1&&dataReady&&!secureError&&unlocked?FloatingActionButton(backgroundColor:GolpoolStyle.rose,foregroundColor:Colors.white,onPressed:addTx,child:const Icon(Icons.add)):null,
+  bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:unlocked?(v)=>setState(()=>tab=v):null,destinations:const [
    NavigationDestination(icon:Icon(Icons.home_outlined),label:'خانه'),
    NavigationDestination(icon:Icon(Icons.receipt_long_outlined),label:'تراکنش‌ها'),
    NavigationDestination(icon:Icon(Icons.pie_chart_outline),label:'بودجه'),
