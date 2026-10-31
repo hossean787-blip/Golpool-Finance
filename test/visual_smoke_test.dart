@@ -5,6 +5,7 @@ import 'package:golpool/main.dart';
 void main() {
  testWidgets('Persian navigation and approved design sections', (tester) async {
   await tester.pumpWidget(const Golpool());
+  await tester.pumpAndSettle();
   expect(find.text('گل‌پول 🌸'), findsNothing);
   expect(find.text('خرج امروز'), findsOneWidget);
   expect(find.text('حساب‌های من'), findsOneWidget);
