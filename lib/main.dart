@@ -1,3 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:golpool/expense_chart.dart';
+import 'package:golpool/backup_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:golpool/finance.dart';
@@ -46,11 +54,19 @@ class _HomeState extends State<Home>{
     return ListView(children:[
       GolpoolStyle.welcomeBanner().animate().fadeIn(duration:500.ms).slideY(begin:-.08,end:0),
       GolpoolStyle.summary(today:money(todayAmount),remaining:money(total-used)),
+      GolpoolStyle.section('خرج‌ها به تفکیک دسته'),ExpenseChart(items:items,budgets:budgets),
       GolpoolStyle.section('حساب‌های من'),GolpoolStyle.panel(child:Column(children:cards.map((c)=>ListTile(leading:GolpoolStyle.bubble(Icons.credit_card),title:Text(c),subtitle:const Text('حساب بانکی'))).toList())),
       GolpoolStyle.section('خرج‌های بدون توضیح'),GolpoolStyle.pending(MoneyMath.pending(items).length,()=>setState(()=>tab=1)),GolpoolStyle.section('آخرین تراکنش‌ها'),
       ...items.reversed.take(4).map((t)=>tile(t['note'].toString().isEmpty?'خرج بدون توضیح':t['note'].toString(),money(t['amount'] as num)))]);
    case 1:return ListView(children:[
-    ...items.reversed.map((t)=>tile(t['note'].toString().isEmpty?'بدون توضیح':t['note'].toString(),money(t['amount'] as num),action:()=>explain(t))),
+    ...items.reversed.map((t)=>GolpoolStyle.panel(child:Column(children:[
+      ListTile(title:Text(t['note'].toString().isEmpty?'بدون توضیح':t['note'].toString()),
+        subtitle:Text(money(t['amount'] as num)),trailing:IconButton(onPressed:()=>explain(t),icon:const Icon(Icons.edit_outlined))),
+      if(t['receipt'] is String) GestureDetector(onTap:()=>showReceipt(t),child:ClipRRect(
+        borderRadius:BorderRadius.circular(14),child:Image.memory(base64Decode(t['receipt'] as String),
+        height:110,fit:BoxFit.cover))),
+      TextButton.icon(onPressed:()=>attachReceipt(t),icon:const Icon(Icons.add_a_photo_outlined),
+        label:Text(t['receipt'] is String?'تعویض تصویر رسید':'افزودن تصویر رسید'))]))),
     if(items.isEmpty)tile('هنوز تراکنشی ثبت نشده','با دکمه + شروع کن')]);
    case 2:return ListView(children:[
     GolpoolStyle.section('بودجه‌بندی ماهانه'),
@@ -68,10 +84,84 @@ class _HomeState extends State<Home>{
     tile('کارت‌های بانکی',cards.join('، ')),
     FilledButton(onPressed:addCard,child:const Text('افزودن کارت')),
     tile('یادآوری شبانه','۲۱:۰۰ و در صورت عدم تکمیل ۲۲:۳۰ (فعلاً غیرفعال)'),
-    tile('امنیت و پشتیبان‌گیری','نسخه آزمایشی؛ اطلاعات واقعی وارد نکنید'),
+    GolpoolStyle.section('پشتیبان‌گیری امن'),
+    GolpoolStyle.panel(child:Column(children:[
+      const Text('فایل پشتیبان با رمز انتخابی شما رمزگذاری می‌شود. رمز را فراموش نکنید.'),
+      const SizedBox(height:12),
+      FilledButton.icon(onPressed:exportBackup,icon:const Icon(Icons.lock_outline),label:const Text('خروجی رمزگذاری‌شده')),
+      OutlinedButton.icon(onPressed:importBackup,icon:const Icon(Icons.restore),label:const Text('بازیابی از فایل'))])),
     ...debts.map((d)=>tile(d['person'].toString(),'${money(d['amount'] as num)} · ${d['settled']==true?'تسویه شده':'باز'}')),
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
   }
+ }
+ Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts};
+ Future<String?> passwordPrompt(String title) async {
+   final c=TextEditingController();
+   final value=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
+     title:Text(title),content:TextField(controller:c,obscureText:true,
+       decoration:const InputDecoration(hintText:'حداقل ۱۲ نویسه')),
+     actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('انصراف')),
+       FilledButton(onPressed:()=>Navigator.pop(ctx,c.text),child:const Text('تأیید'))]));
+   c.dispose();return value;
+ }
+ void info(String message){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(message)));}
+ Future<void> attachReceipt(Map<String,dynamic> transaction) async {
+   try{
+     final image=await ImagePicker().pickImage(source:ImageSource.gallery,imageQuality:50,maxWidth:1100);
+     if(image==null)return;
+     final bytes=await image.readAsBytes();
+     if(bytes.length>280000){info('حجم تصویر زیاد است؛ تصویر کوچک‌تری انتخاب کنید.');return;}
+     transaction['receipt']=base64Encode(bytes);
+     await _persist();if(mounted)setState((){});
+     info('رسید ذخیره شد.');
+   }catch(_){info('دسترسی به تصویر یا ذخیره آن ممکن نشد.');}
+ }
+ Future<void> showReceipt(Map<String,dynamic> transaction)async{
+   final b=transaction['receipt'];
+   if(b is! String)return;
+   try {await showDialog<void>(context:context,builder:(ctx)=>Dialog(
+     child:InteractiveViewer(child:Image.memory(base64Decode(b),fit:BoxFit.contain))));}
+   catch(_){info('تصویر رسید آسیب دیده است.');}
+ }
+ Future<void> exportBackup()async{
+   final pass=await passwordPrompt('رمز جدید پشتیبان');
+   if(pass==null)return;
+   if(pass.length<12){info('رمز باید حداقل ۱۲ نویسه باشد.');return;}
+   try{
+     final payload=await GolpoolBackup.encrypt(snapshot(),pass);
+     final file=File('${Directory.systemTemp.path}/golpool-backup-${DateTime.now().millisecondsSinceEpoch}.golpool');
+     await file.writeAsString(payload,flush:true);
+     await SharePlus.instance.share(ShareParams(files:[XFile(file.path)],
+       subject:'پشتیبان رمزگذاری‌شده گل‌پول'));
+     // Temporary shared files can remain in the OS cache; never use public cloud links by default.
+   }catch(_){info('ساخت یا اشتراک‌گذاری پشتیبان انجام نشد.');}
+ }
+ Future<void> importBackup()async{
+   final selected=await FilePicker.platform.pickFiles(type:FileType.any,withData:true);
+   if(selected==null||selected.files.isEmpty)return;
+   final f=selected.files.single;
+   if(f.size>20000000){info('فایل بزرگ‌تر از حد مجاز است.');return;}
+   final pass=await passwordPrompt('رمز پشتیبان');
+   if(pass==null)return;
+   try{
+     final raw=f.bytes??(f.path!=null?await File(f.path!).readAsBytes():Uint8List(0));
+     final result=await GolpoolBackup.decrypt(utf8.decode(raw),pass);
+     if(!mounted)return;
+     final confirm=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+       title:const Text('جایگزینی اطلاعات'),
+       content:const Text('تمام اطلاعات فعلی با داده‌های پشتیبان جایگزین می‌شود. ادامه می‌دهید؟'),
+       actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('انصراف')),
+         FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('بازیابی'))]));
+     if(confirm!=true)return;
+     await secureStore.save(result);
+     if(!mounted)return;
+     setState((){items..clear()..addAll((result['items'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
+       cards..clear()..addAll((result['cards'] as List).map((x)=>x.toString()));
+       budgets..clear()..addAll((result['budgets'] as Map).map((k,v)=>MapEntry(k.toString(),(v as num).round())));
+       goals..clear()..addAll((result['goals'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
+       debts..clear()..addAll((result['debts'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));});
+     info('بازیابی موفق بود.');
+   }catch(_){info('رمز نادرست یا فایل نامعتبر است؛ اطلاعات تغییر نکرد.');}
  }
  Future<String?> ask(String title)async{
   final controller=TextEditingController();
