@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
@@ -149,11 +148,11 @@ class _HomeState extends State<Home>{
    final selected=await FilePicker.pickFiles();
    if(selected.isEmpty)return;
    final f=selected.single;
-   if(f.size>20000000){info('فایل بزرگ‌تر از حد مجاز است.');return;}
+   if((f.lengthSync()??await f.length()??20000001)>20000000){info('فایل بزرگ‌تر از حد مجاز است.');return;}
    final pass=await passwordPrompt('رمز پشتیبان');
    if(pass==null)return;
    try{
-     final raw=f.bytes??(f.path!=null?await File(f.path!).readAsBytes():Uint8List(0));
+     final raw=await f.readAsBytes();
      final result=await GolpoolBackup.decrypt(utf8.decode(raw),pass);
      if(!mounted)return;
      final confirm=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
