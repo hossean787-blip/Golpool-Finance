@@ -32,6 +32,7 @@ class _HomeState extends State<Home>{
  @override void initState(){super.initState();_load();}
  Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}
     final savedCards=data['cards']; if(savedCards is List){cards..clear()..addAll(savedCards.map((x)=>x.toString()));}
+    final savedOpenings=data['openingBalances'];if(savedOpenings is Map){openingBalances..clear()..addAll(savedOpenings.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedBudgets=data['budgets']; if(savedBudgets is Map){budgets..clear()..addAll(savedBudgets.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedGoals=data['goals']; if(savedGoals is List){goals..clear()..addAll(savedGoals.map((x)=>Map<String,dynamic>.from(x as Map)));}
     remindersEnabled=data['remindersEnabled']==true;
@@ -51,6 +52,7 @@ class _HomeState extends State<Home>{
  Future<void> toggleReminders(bool value)async{if(value){try{if(!await reminders.enable()){info('مجوز اعلان داده نشد.');return;}}catch(_){info('اعلان روی این دستگاه در دسترس نیست.');return;}}setState(()=>remindersEnabled=value);await _persist();await _refreshReminders();}
 
  final cards=<String>[];
+ final openingBalances=<String,int>{};
  final budgets=<String,int>{};
  final goals=<Map<String,dynamic>>[];
  final debts=<Map<String,dynamic>>[];
@@ -72,7 +74,7 @@ class _HomeState extends State<Home>{
       GolpoolStyle.welcomeBanner().animate().fadeIn(duration:500.ms).slideY(begin:-.08,end:0),
       GolpoolStyle.summary(today:money(todayAmount),remaining:money(total-used)),
       GolpoolStyle.section('خرج‌ها به تفکیک دسته'),ExpenseChart(items:items,budgets:budgets),
-      GolpoolStyle.section('حساب‌های من'),GolpoolStyle.panel(child:Column(children:cards.map((c)=>ListTile(leading:GolpoolStyle.bubble(Icons.credit_card),title:Text(c),subtitle:const Text('حساب بانکی'))).toList())),
+      GolpoolStyle.section('حساب‌های من'),GolpoolStyle.panel(child:Column(children:cards.map((c)=>ListTile(leading:GolpoolStyle.bubble(Icons.credit_card),title:Text(c),subtitle:Text(MoneyMath.accountBalance(c,openingBalances,items)==null?'مانده اولیه ثبت نشده':money(MoneyMath.accountBalance(c,openingBalances,items)!)))).toList())),
       GolpoolStyle.section('خرج‌های بدون توضیح'),GolpoolStyle.pending(MoneyMath.pending(items).length,()=>setState(()=>tab=1)),GolpoolStyle.section('آخرین تراکنش‌ها'),
       ...items.reversed.take(4).map((t)=>tile(t['note'].toString().isEmpty?'خرج بدون توضیح':t['note'].toString(),money(t['amount'] as num)))]);
    case 1:return ListView(children:[
@@ -87,6 +89,10 @@ class _HomeState extends State<Home>{
     if(items.isEmpty)tile('هنوز تراکنشی ثبت نشده','با دکمه + شروع کن')]);
    case 2:return ListView(children:[
     GolpoolStyle.section('بودجه‌بندی ماهانه'),
+    GolpoolStyle.panel(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+      Text('درآمد ماه: ${money(MoneyMath.incomeForMonth(items,date().substring(0,7)))}'),
+      Text('هزینه ماه: ${money(MoneyMath.expensesForMonth(items,date().substring(0,7)))}'),
+      Text('خالص ماه: ${money(MoneyMath.incomeForMonth(items,date().substring(0,7))-MoneyMath.expensesForMonth(items,date().substring(0,7)))}')])),
     if(budgets.isEmpty)tile('بودجه‌ای تعریف نشده','در این نسخه بودجه پیش‌فرض ساختگی نمایش داده نمی‌شود.'),
     ...budgets.entries.map((e){
       final used=MoneyMath.categorySpent(items,e.key,date().substring(0,7));
@@ -102,6 +108,9 @@ class _HomeState extends State<Home>{
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
     FilledButton(onPressed:addCard,child:const Text('افزودن کارت')),
+    OutlinedButton.icon(onPressed:transferMoney,icon:const Icon(Icons.swap_horiz),label:const Text('انتقال بین حساب‌ها')),
+    OutlinedButton.icon(onPressed:editOpeningBalance,icon:const Icon(Icons.account_balance_wallet_outlined),label:const Text('تنظیم مانده اولیه حساب')),
+
     FilledButton.tonal(onPressed:addBudget,child:const Text('تعریف بودجه ماهانه')),
     GolpoolStyle.panel(child:SwitchListTile(
       title:const Text('یادآوری شبانه'),
@@ -130,7 +139,7 @@ class _HomeState extends State<Home>{
    setState(()=>biometricLock=enabled);
    await _persist();
  }
- Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled,'biometricLock':biometricLock};
+ Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'openingBalances':openingBalances,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled,'biometricLock':biometricLock};
  Future<String?> passwordPrompt(String title) async {
    final c=TextEditingController();
    final value=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
@@ -198,6 +207,7 @@ class _HomeState extends State<Home>{
      if(!mounted)return;
      setState((){items..clear()..addAll((result['items'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
        cards..clear()..addAll((result['cards'] as List).map((x)=>x.toString()));
+       openingBalances..clear()..addAll((result['openingBalances'] is Map ? (result['openingBalances'] as Map) : <String,int>{}).map((k,v)=>MapEntry(k.toString(),(v as num).round())));
        budgets..clear()..addAll((result['budgets'] as Map).map((k,v)=>MapEntry(k.toString(),(v as num).round())));
        goals..clear()..addAll((result['goals'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
        debts..clear()..addAll((result['debts'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
@@ -222,10 +232,18 @@ class _HomeState extends State<Home>{
   final note=await ask('توضیح هزینه (اختیاری)');
   if(note==null)return;
   final category=await ask('دسته‌بندی (مثلاً خوراک یا حقوق)');if(category==null)return;
-  items.add({'type':kind,'date':date(),'amount':sum,'note':note,'category':category.trim().isEmpty?'سایر':category.trim()});await changed();
+  String? account;
+  if(cards.isNotEmpty){if(!mounted)return;account=await chooseAccount('حساب مرتبط');if(account==null)return;}
+  if(kind=='expense'&&account!=null){
+    final bal=MoneyMath.accountBalance(account,openingBalances,items);
+    if(bal!=null&&sum>bal){info('مبلغ بیشتر از مانده حساب است.');return;}
+  }
+  items.add({'type':kind,'date':date(),'amount':sum,'note':note,
+    'category':category.trim().isEmpty?'سایر':category.trim(),'account':account});await changed();
  }
  Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty){t['note']=s.trim();changed();}}
  Future<void> editTx(Map<String,dynamic> tx)async{
+   if(tx['type']=='transfer'){info('برای اصلاح انتقال، آن را حذف و دوباره ثبت کن.');return;}
    final amount=int.tryParse(await ask('مبلغ جدید (تومان)')??'');
    if(amount==null||amount<=0)return;
    final note=await ask('توضیح جدید');if(note==null)return;
@@ -280,7 +298,40 @@ class _HomeState extends State<Home>{
  Future<void> saveGoal(Map<String,dynamic> g)async{
   final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0){g['saved']=(g['saved'] as int)+sum;changed();}
  }
- Future<void> addCard()async{final name=await ask('نام کارت یا بانک');if(name!=null&&name.isNotEmpty){cards.add(name);changed();}}
+ Future<void> addCard()async{
+  final name=await ask('نام کارت یا بانک');
+  if(name==null||name.trim().isEmpty||cards.contains(name.trim()))return;
+  final opening=int.tryParse(await ask('مانده اولیه به تومان (صفر هم مجاز است)')??'');
+  if(opening==null||opening<0)return;
+  cards.add(name.trim());openingBalances[name.trim()]=opening;await changed();
+ }
+ Future<void> editOpeningBalance()async{
+  if(cards.isEmpty){info('ابتدا یک حساب ثبت کن.');return;}
+  final name=await chooseAccount('حساب موردنظر');
+  if(name==null)return;
+  final amount=int.tryParse(await ask('مانده اولیه حساب $name')??'');
+  if(amount==null||amount<0)return;
+  openingBalances[name]=amount;await changed();
+ }
+ Future<String?> chooseAccount(String title)async{
+  if(cards.isEmpty)return null;
+  return showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:Text(title),
+    children:cards.map((c)=>SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,c),
+    child:Text(c))).toList()));
+ }
+ Future<void> transferMoney()async{
+  if(cards.length<2){info('برای انتقال، دو حساب نیاز است.');return;}
+  final source=await chooseAccount('حساب مبدأ');if(source==null||!mounted)return;
+  final destination=await chooseAccount('حساب مقصد');if(destination==null||destination==source)return;
+  final amount=int.tryParse(await ask('مبلغ انتقال (تومان)')??'');
+  if(amount==null||amount<=0)return;
+  final balance=MoneyMath.accountBalance(source,openingBalances,items);
+  if(balance!=null&&amount>balance){info('مبلغ از مانده حساب مبدأ بیشتر است.');return;}
+  items.add({'type':'transfer','date':date(),'amount':amount,'note':'انتقال از $source به $destination',
+    'category':'انتقال','from':source,'to':destination});
+  await changed();
+ }
+
  Future<void> addBudget()async{
   final name=await ask('دسته بودجه (مثلاً خوراک)');
   if(name==null||name.trim().isEmpty)return;
