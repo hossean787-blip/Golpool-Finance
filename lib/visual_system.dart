@@ -46,6 +46,21 @@ class GolpoolStyle {
     Icon(icon,color:rose,size:20)]),const SizedBox(height:18),
    FittedBox(fit:BoxFit.scaleDown,alignment:Alignment.centerRight,child:Text(value,
     style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink)))]));
+ static Widget welcomeBanner()=>Container(
+   margin:const EdgeInsets.only(top:12,bottom:10),padding:const EdgeInsets.all(21),
+   decoration:BoxDecoration(
+     gradient:const LinearGradient(begin:Alignment.topRight,end:Alignment.bottomLeft,
+       colors:[Color(0xfff8cada),Color(0xffffe9df),Color(0xfff1ddf7)]),
+     borderRadius:BorderRadius.circular(29),
+     boxShadow:[BoxShadow(color:rose.withValues(alpha:.12),blurRadius:23,offset:const Offset(0,10))]),
+   child:Row(children:[
+     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+       const Text('گل‌پولِ من 🌷',style:TextStyle(color:ink,fontSize:23,fontWeight:FontWeight.w900)),
+       const SizedBox(height:9),
+       const Text('برای آرزوهای قشنگ و تصمیم‌های هوشمندانه',style:TextStyle(color:ink,fontSize:12,height:1.65))])),
+     Container(width:65,height:65,alignment:Alignment.center,
+       decoration:BoxDecoration(color:Colors.white.withValues(alpha:.65),shape:BoxShape.circle),
+       child:const Icon(Icons.local_florist_rounded,color:rose,size:38))]));
  static Widget goalCard(String name,String saved,String target,double percent,VoidCallback onAdd)=>panel(
   color:const Color(0xfffffbfd),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
    Row(children:[bubble(Icons.favorite_outline_rounded),const SizedBox(width:12),
