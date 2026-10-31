@@ -66,7 +66,7 @@ class _HomeState extends State<Home>{
    case 1:return ListView(children:[
     ...items.reversed.map((t)=>GolpoolStyle.panel(child:Column(children:[
       ListTile(title:Text(t['note'].toString().isEmpty?'بدون توضیح':t['note'].toString()),
-        subtitle:Text(money(t['amount'] as num)),trailing:IconButton(onPressed:()=>explain(t),icon:const Icon(Icons.edit_outlined))),
+        subtitle:Text(money(t['amount'] as num)),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit'){editTx(t);}else{deleteTx(t);}},itemBuilder:(_)=>const [PopupMenuItem(value:'edit',child:Text('ویرایش و دسته‌بندی')),PopupMenuItem(value:'delete',child:Text('حذف تراکنش'))])),
       if(t['receipt'] is String) GestureDetector(onTap:()=>showReceipt(t),child:ClipRRect(
         borderRadius:BorderRadius.circular(14),child:Image.memory(base64Decode(t['receipt'] as String),
         height:110,fit:BoxFit.cover))),
@@ -78,13 +78,14 @@ class _HomeState extends State<Home>{
     if(budgets.isEmpty)tile('بودجه‌ای تعریف نشده','در این نسخه بودجه پیش‌فرض ساختگی نمایش داده نمی‌شود.'),
     ...budgets.entries.map((e){
       final used=MoneyMath.categorySpent(items,e.key,date().substring(0,7));
-      return GolpoolStyle.categoryBudget(e.key,money(used),money(e.value),e.value==0?0:used/e.value);
+      return InkWell(onTap:()=>editBudget(e.key),child:GolpoolStyle.categoryBudget(e.key,money(used),money(e.value),e.value==0?0:used/e.value));
     })]);
    case 3:return ListView(children:[
     GolpoolStyle.section('هدف‌های پس‌انداز'),
     ...goals.map((g)=>GolpoolStyle.goalCard(g['name'].toString(),money(g['saved'] as int),
       money(g['target'] as int),MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,
       ()=>saveGoal(g))),
+    ...goals.map((g)=>OutlinedButton.icon(onPressed:()=>editGoal(g),icon:const Icon(Icons.tune),label:Text('مدیریت ${g['name']}'))),
     FilledButton.icon(onPressed:addGoal,icon:const Icon(Icons.add),label:const Text('هدف جدید'))]);
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
@@ -100,7 +101,7 @@ class _HomeState extends State<Home>{
       const SizedBox(height:12),
       FilledButton.icon(onPressed:exportBackup,icon:const Icon(Icons.lock_outline),label:const Text('خروجی رمزگذاری‌شده')),
       OutlinedButton.icon(onPressed:importBackup,icon:const Icon(Icons.restore),label:const Text('بازیابی از فایل'))])),
-    ...debts.map((d)=>tile(d['person'].toString(),'${money(d['amount'] as num)} · ${d['settled']==true?'تسویه شده':'باز'}')),
+    ...debts.map((d)=>GolpoolStyle.panel(child:ListTile(title:Text(d['person'].toString()),subtitle:Text(money(d['amount'] as num)),trailing:Switch(value:d['settled']==true,onChanged:(v){d['settled']=v;changed();})))),
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
   }
  }
@@ -185,13 +186,62 @@ class _HomeState extends State<Home>{
   controller.dispose();return result;
  }
  Future<void> addTx()async{
-  final sum=int.tryParse(await ask('مبلغ برداشت (تومان)')??'');
+  final kind=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('ثبت تراکنش'),children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'expense'),child:const Text('هزینه')),SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'income'),child:const Text('درآمد'))]));
+  if(kind==null)return;
+  final sum=int.tryParse(await ask('مبلغ (تومان)')??'');
   if(sum==null||sum<=0)return;
   final note=await ask('توضیح هزینه (اختیاری)');
   if(note==null)return;
-  items.add({'type':'expense','date':date(),'amount':sum,'note':note,'category':'سایر'});changed();
+  final category=await ask('دسته‌بندی (مثلاً خوراک یا حقوق)');if(category==null)return;
+  items.add({'type':kind,'date':date(),'amount':sum,'note':note,'category':category.trim().isEmpty?'سایر':category.trim()});await changed();
  }
  Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty){t['note']=s.trim();changed();}}
+ Future<void> editTx(Map<String,dynamic> tx)async{
+   final amount=int.tryParse(await ask('مبلغ جدید (تومان)')??'');
+   if(amount==null||amount<=0)return;
+   final note=await ask('توضیح جدید');if(note==null)return;
+   final category=await ask('دسته هزینه یا درآمد');if(category==null||category.trim().isEmpty)return;
+   final kind=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('نوع تراکنش'),
+      children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'expense'),child:const Text('هزینه')),
+                SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'income'),child:const Text('درآمد'))]));
+   if(kind==null)return;
+   tx..['amount']=amount..['note']=note.trim()..['category']=category.trim()..['type']=kind;
+   await changed();
+ }
+ Future<void> deleteTx(Map<String,dynamic> tx)async{
+   final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+     title:const Text('حذف تراکنش'),content:const Text('این تراکنش و تصویر رسید آن حذف می‌شود.'),
+     actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('انصراف')),
+       FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))]));
+   if(yes==true){items.remove(tx);await changed();}
+ }
+ Future<void> editBudget(String category)async{
+   final value=int.tryParse(await ask('سقف جدید $category (تومان)')??'');
+   if(value==null||value<0)return;
+   if(value==0){budgets.remove(category);}else{budgets[category]=value;}
+   await changed();
+ }
+ Future<void> editGoal(Map<String,dynamic> goal)async{
+   final action=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:Text(goal['name'].toString()),
+     children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'rename'),child:const Text('ویرایش نام و مبلغ هدف')),
+       SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'withdraw'),child:const Text('برداشت از پس‌انداز')),
+       SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'delete'),child:const Text('حذف هدف'))]));
+   if(action=='rename'){
+     final name=await ask('نام جدید هدف');if(name==null||name.trim().isEmpty)return;
+     final target=int.tryParse(await ask('مبلغ جدید هدف')??'');if(target==null||target<=0)return;
+     goal['name']=name.trim();goal['target']=target;await changed();
+   }else if(action=='withdraw'){
+     final value=int.tryParse(await ask('مبلغ برداشت از پس‌انداز')??'');
+     if(value==null||value<=0||value>(goal['saved'] as num))return;
+     goal['saved']=(goal['saved'] as num).round()-value;await changed();
+   }else if(action=='delete'){
+     final confirmed=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+       title:const Text('حذف هدف'),content:const Text('پس‌انداز ثبت‌شده در این هدف از سوابق حذف می‌شود.'),
+       actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('انصراف')),
+         FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))]));
+     if(confirmed==true){goals.remove(goal);await changed();}
+   }
+ }
  Future<void> addGoal()async{
   final name=await ask('نام هدف');if(name==null||name.isEmpty)return;
   final sum=int.tryParse(await ask('مبلغ هدف')??'');if(sum!=null&&sum>0){goals.add({'name':name,'saved':0,'target':sum});changed();}
