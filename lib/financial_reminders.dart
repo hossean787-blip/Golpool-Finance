@@ -51,4 +51,36 @@ class FinancialReminders {
       iOS:DarwinNotificationDetails()),
       androidScheduleMode:AndroidScheduleMode.inexactAllowWhileIdle);
   }
+  Future<void> updateRecurring(List<Map<String,dynamic>> entries)async{
+    final now=tz.TZDateTime.now(tz.local);
+    for(final entry in entries.take(100)){
+      final rawId=entry['id'];
+      if(rawId is! int)continue;
+      final id=10000+(rawId%100000000);
+      await plugin.cancel(id:id);
+      if(entry['active']!=true)continue;
+      final day=entry['day'];
+      if(day is! int||day<1||day>28)continue;
+      var month=now.month;
+      var year=now.year;
+      var next=tz.TZDateTime(tz.local,year,month,day,9);
+      final paid=entry['lastPaidMonth']=='${now.year}-${now.month.toString().padLeft(2,'0')}';
+      if(!next.isAfter(now)||paid){
+        month++;
+        if(month>12){month=1;year++;}
+        next=tz.TZDateTime(tz.local,year,month,day,9);
+      }
+      await plugin.zonedSchedule(id:id,
+        title:'یادآوری هزینه تکراری',
+        body:'سررسید ${entry['name']??'یک پرداخت'} فرا رسیده است.',
+        scheduledDate:next,
+        notificationDetails:const NotificationDetails(
+          android:AndroidNotificationDetails('golpool_recurring','هزینه‌های تکراری',
+            channelDescription:'یادآوری زمان پرداخت هزینه‌های ماهانه',
+            importance:Importance.defaultImportance),
+          iOS:DarwinNotificationDetails()),
+        androidScheduleMode:AndroidScheduleMode.inexactAllowWhileIdle);
+    }
+  }
+
 }
