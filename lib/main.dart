@@ -408,7 +408,7 @@ class _HomeState extends State<Home>{
      title:const Text('حذف هزینه تکراری'),content:const Text('سوابق پرداخت قبلی حذف نمی‌شود.'),
      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('انصراف')),
        FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))]));
-   if(yes==true){recurring.remove(entry);await changed();}
+   if(yes==true){try{await reminders.cancelRecurring(entry['id'] as int);}catch(_){}recurring.remove(entry);await changed();}
  }
  Future<void> addDebt()async{
   final who=await ask('نام شخص');if(who==null||who.isEmpty)return;
