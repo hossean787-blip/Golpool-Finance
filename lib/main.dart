@@ -15,8 +15,12 @@ class _HomeState extends State<Home>{
  bool dataReady=false;
  bool secureError=false;
  @override void initState(){super.initState();_load();}
- Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}}}catch(_){secureError=true;}if(mounted)setState(()=>dataReady=true);}
- Future<void> _persist() async {try{await secureStore.save({'items':items});}catch(_){if(mounted)setState(()=>secureError=true);}}
+ Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}
+    final savedCards=data['cards']; if(savedCards is List){cards..clear()..addAll(savedCards.map((x)=>x.toString()));}
+    final savedBudgets=data['budgets']; if(savedBudgets is Map){budgets..clear()..addAll(savedBudgets.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
+    final savedGoals=data['goals']; if(savedGoals is List){goals..clear()..addAll(savedGoals.map((x)=>Map<String,dynamic>.from(x as Map)));}
+    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}if(mounted)setState(()=>dataReady=true);}
+ Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts});}catch(_){if(mounted)setState(()=>secureError=true);}}
  void changed(){setState((){});_persist();}
 
  final cards=['بانک اول','بانک دوم'];
@@ -88,16 +92,16 @@ class _HomeState extends State<Home>{
  Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty)t['note']=s.trim();changed();}
  Future<void> addGoal()async{
   final name=await ask('نام هدف');if(name==null||name.isEmpty)return;
-  final sum=int.tryParse(await ask('مبلغ هدف')??'');if(sum!=null&&sum>0)setState(()=>goals.add({'name':name,'saved':0,'target':sum}));
+  final sum=int.tryParse(await ask('مبلغ هدف')??'');if(sum!=null&&sum>0)goals.add({'name':name,'saved':0,'target':sum});changed();
  }
  Future<void> saveGoal(Map<String,dynamic> g)async{
-  final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0)setState(()=>g['saved']=(g['saved'] as int)+sum);
+  final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0)g['saved']=(g['saved'] as int)+sum;changed();
  }
- Future<void> addCard()async{final name=await ask('نام کارت یا بانک');if(name!=null&&name.isNotEmpty)setState(()=>cards.add(name));}
+ Future<void> addCard()async{final name=await ask('نام کارت یا بانک');if(name!=null&&name.isNotEmpty)cards.add(name);changed();}
  Future<void> addDebt()async{
   final who=await ask('نام شخص');if(who==null||who.isEmpty)return;
   final sum=int.tryParse(await ask('مبلغ قرض')??'');
-  if(sum!=null&&sum>0)setState(()=>debts.add({'person':who,'amount':sum,'settled':false}));
+  if(sum!=null&&sum>0)debts.add({'person':who,'amount':sum,'settled':false});changed();
  }
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
   appBar:AppBar(toolbarHeight:83,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('یه همراه کوچولو برای پول‌هات 🌸',style:TextStyle(fontSize:12,color:GolpoolStyle.muted)),const SizedBox(height:4),Text(['خانه','تراکنش‌ها','بودجه ماهانه','هدف‌های من','بیشتر'][tab],style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:GolpoolStyle.ink))]),actions:[Padding(padding:const EdgeInsets.only(left:14),child:GolpoolStyle.bubble(Icons.notifications_none_rounded))]),
