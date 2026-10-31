@@ -18,8 +18,8 @@ class ExpenseChart extends StatelessWidget {
     }
     final entries=values.entries.where((e)=>e.value>0).toList()..sort((a,b)=>b.value.compareTo(a.value));
     const palette=[Color(0xffda5f91),Color(0xff9a84d1),Color(0xff60c5a6),Color(0xffffbc86),Color(0xff82afdb),Color(0xffd89ab6)];
-    if(entries.isEmpty) return GolpoolStyle.panel(child:const Padding(padding:EdgeInsets.all(12),
-      child:Text('پس از ثبت هزینه، نمودار دسته‌بندی اینجا نمایش داده می‌شود.')));
+    if(entries.isEmpty) { return GolpoolStyle.panel(child:const Padding(padding:EdgeInsets.all(12),
+      child:Text('پس از ثبت هزینه، نمودار دسته‌بندی اینجا نمایش داده می‌شود.'))); }
     final total=entries.fold<double>(0,(s,e)=>s+e.value);
     return GolpoolStyle.panel(child:Column(children:[
       SizedBox(height:195,child:PieChart(PieChartData(centerSpaceRadius:54,sectionsSpace:3,
