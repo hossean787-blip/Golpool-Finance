@@ -119,7 +119,7 @@ class _HomeState extends State<Home>{
     ...goals.map((g)=>GolpoolStyle.goalCard(g['name'].toString(),money(g['saved'] as int),
       money(g['target'] as int),MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,
       ()=>saveGoal(g))),
-    ...goals.map((g)=>OutlinedButton.icon(onPressed:()=>editGoal(g),icon:const Icon(Icons.tune),label:Text('مدیریت ${g['name']}'))),
+    ...goals.map((g)=>Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()=>editGoal(g),icon:const Icon(Icons.tune),label:Text('مدیریت ${g['name']}'))),const SizedBox(width:9),IconButton(onPressed:()=>goalHistory(g),icon:const Icon(Icons.history),tooltip:'تاریخچه هدف')])),
     FilledButton.icon(onPressed:addGoal,icon:const Icon(Icons.add),label:const Text('هدف جدید'))]);
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
@@ -304,6 +304,20 @@ class _HomeState extends State<Home>{
    if(value==0){budgets.remove(category);}else{budgets[category]=value;}
    await changed();
  }
+ Future<void> goalHistory(Map<String,dynamic> goal)async{
+   final rows=goal['history'];
+   if(!mounted)return;
+   await showDialog<void>(context:context,builder:(ctx)=>AlertDialog(
+     title:Text('تاریخچه ${goal['name']}'),
+     content:SizedBox(width:300,child:rows is List&&rows.isNotEmpty?
+       ListView(shrinkWrap:true,children:rows.reversed.map((r)=>ListTile(
+         title:Text(money((r['amount'] as num).abs())),
+         subtitle:Text(r['date'].toString()),
+         leading:Icon((r['amount'] as num)<0?Icons.remove_circle_outline:Icons.add_circle_outline,
+           color:(r['amount'] as num)<0?GolpoolStyle.rose:GolpoolStyle.mint))).toList()):
+       const Text('هنوز تراکنشی برای این هدف ثبت نشده است.')),
+     actions:[TextButton(onPressed:()=>Navigator.pop(ctx),child:const Text('بستن'))]));
+ }
  Future<void> editGoal(Map<String,dynamic> goal)async{
    final action=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:Text(goal['name'].toString()),
      children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'rename'),child:const Text('ویرایش نام و مبلغ هدف')),
@@ -316,7 +330,8 @@ class _HomeState extends State<Home>{
    }else if(action=='withdraw'){
      final value=int.tryParse(await ask('مبلغ برداشت از پس‌انداز')??'');
      if(value==null||value<=0||value>(goal['saved'] as num))return;
-     goal['saved']=(goal['saved'] as num).round()-value;await changed();
+     goal['saved']=(goal['saved'] as num).round()-value;
+     (goal['history']??=<Map<String,dynamic>>[]).add({'date':date(),'amount':-value});await changed();
    }else if(action=='delete'){
      if(!mounted)return;
      final confirmed=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
@@ -331,7 +346,8 @@ class _HomeState extends State<Home>{
   final sum=int.tryParse(await ask('مبلغ هدف')??'');if(sum!=null&&sum>0){goals.add({'name':name,'saved':0,'target':sum});changed();}
  }
  Future<void> saveGoal(Map<String,dynamic> g)async{
-  final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0){g['saved']=(g['saved'] as int)+sum;changed();}
+  final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0){g['saved']=(g['saved'] as int)+sum;
+    (g['history']??=<Map<String,dynamic>>[]).add({'date':date(),'amount':sum});await changed();}
  }
  Future<void> addCard()async{
   final name=await ask('نام کارت یا بانک');
