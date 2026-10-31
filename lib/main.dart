@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:golpool/finance.dart';
+import 'package:golpool/visual_system.dart';
 void main()=>runApp(const Golpool());
 class Golpool extends StatelessWidget {
  const Golpool({super.key});
- @override Widget build(BuildContext context)=>MaterialApp(debugShowCheckedModeBanner:false,title:'گل‌پول',theme:ThemeData(useMaterial3:true,colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xffdb5a8f)),scaffoldBackgroundColor:const Color(0xfffcf3f6)),home:const Home());
+ @override Widget build(BuildContext context)=>MaterialApp(debugShowCheckedModeBanner:false,title:'گل‌پول',theme:GolpoolStyle.theme,home:const Home());
 }
 class Home extends StatefulWidget {const Home({super.key});@override State<Home> createState()=>_HomeState();}
 class _HomeState extends State<Home>{
@@ -14,8 +15,13 @@ class _HomeState extends State<Home>{
  final goals=<Map<String,dynamic>>[{'name':'خرید گوشی','saved':18000000,'target':60000000}];
  final debts=<Map<String,dynamic>>[];
  String date(){final d=DateTime.now();return [d.year,d.month.toString().padLeft(2,'0'),d.day.toString().padLeft(2,'0')].join('-');}
- String money(num n)=>n.round().toString()+' تومان';
- Widget tile(String title,String subtitle,{VoidCallback? action})=>Card(color:Colors.white,child:ListTile(title:Text(title),subtitle:Text(subtitle),trailing:action==null?null:IconButton(onPressed:action,icon:const Icon(Icons.edit_outlined))));
+ String money(num n)=>GolpoolStyle.money(n);
+ Widget tile(String title,String subtitle,{VoidCallback? action})=>GolpoolStyle.panel(child:ListTile(
+  contentPadding:const EdgeInsets.symmetric(horizontal:8,vertical:3),
+  leading:GolpoolStyle.bubble(title.contains('خرج')?Icons.shopping_bag_outlined:Icons.auto_awesome_rounded),
+  title:Text(title,style:const TextStyle(fontWeight:FontWeight.w700,fontSize:14)),
+  subtitle:Text(subtitle,style:const TextStyle(color:GolpoolStyle.muted,fontSize:12)),
+  trailing:action==null?null:IconButton(onPressed:action,icon:const Icon(Icons.edit_outlined,color:GolpoolStyle.rose))));
  Widget screen(){
   switch(tab){
    case 0:
@@ -23,9 +29,9 @@ class _HomeState extends State<Home>{
     final total=budgets.values.fold<int>(0,(s,n)=>s+n);
     final used=budgets.keys.fold<int>(0,(s,c)=>s+MoneyMath.categorySpent(items,c,date().substring(0,7)));
     return ListView(children:[
-      tile('خرج امروز 🌸',money(todayAmount)),tile('مانده بودجه ماه 💚',money(total-used)),
-      tile('حساب‌های من',cards.join(' · ')),
-      tile('این پول کجا رفت؟',MoneyMath.pending(items).length.toString()+' خرج بدون توضیح',action:()=>setState(()=>tab=1)),
+      GolpoolStyle.summary(today:money(todayAmount),remaining:money(total-used)),
+      GolpoolStyle.section('حساب‌های من'),GolpoolStyle.panel(child:Column(children:cards.map((c)=>ListTile(leading:GolpoolStyle.bubble(Icons.credit_card),title:Text(c),subtitle:const Text('حساب بانکی'))).toList())),
+      GolpoolStyle.section('خرج‌های بدون توضیح'),GolpoolStyle.pending(MoneyMath.pending(items).length,()=>setState(()=>tab=1)),GolpoolStyle.section('آخرین تراکنش‌ها'),
       ...items.reversed.take(4).map((t)=>tile(t['note'].toString().isEmpty?'خرج بدون توضیح':t['note'].toString(),money(t['amount'] as num)))]);
    case 1:return ListView(children:[
     ...items.reversed.map((t)=>tile(t['note'].toString().isEmpty?'بدون توضیح':t['note'].toString(),money(t['amount'] as num),action:()=>explain(t))),
@@ -33,19 +39,19 @@ class _HomeState extends State<Home>{
    case 2:return ListView(children:budgets.entries.map((e){
     final used=MoneyMath.categorySpent(items,e.key,date().substring(0,7));
     final percent=used/e.value;
-    return Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+    return GolpoolStyle.panel(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
       Text(e.key,style:const TextStyle(fontWeight:FontWeight.bold)),
-      const SizedBox(height:8),LinearProgressIndicator(value:percent.clamp(0.0,1.0)),
+      const SizedBox(height:8),GolpoolStyle.progress(percent),
       Text(money(used)+' از '+money(e.value)),
       if(percent>=0.7)const Text('یه یادآوری کوچولو: داری به سقف بودجه نزدیک می‌شی 💗',style:TextStyle(color:Colors.pink))
-    ])));
+    ]));
    }).toList());
    case 3:return ListView(children:[
-    ...goals.map((g)=>Card(color:Colors.white,child:Padding(padding:const EdgeInsets.all(16),child:Column(children:[
+    ...goals.map((g)=>GolpoolStyle.panel(child:Column(children:[
       Text(g['name'].toString()),const SizedBox(height:8),
-      LinearProgressIndicator(value:MoneyMath.progress(g['saved'] as int,g['target'] as int)/100),
+      GolpoolStyle.progress(MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,color:GolpoolStyle.mint),
       Text(money(g['saved'] as int)+' از '+money(g['target'] as int)),
-      TextButton(onPressed:()=>saveGoal(g),child:const Text('افزودن پس‌انداز'))]))),
+      TextButton(onPressed:()=>saveGoal(g),child:const Text('افزودن پس‌انداز'))])),
     FilledButton(onPressed:addGoal,child:const Text('هدف جدید'))]);
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
@@ -85,9 +91,9 @@ class _HomeState extends State<Home>{
   if(sum!=null&&sum>0)setState(()=>debts.add({'person':who,'amount':sum,'settled':false}));
  }
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
-  appBar:AppBar(title:const Text('گل‌پول 🌸')),
-  body:Padding(padding:const EdgeInsets.symmetric(horizontal:12),child:screen()),
-  floatingActionButton:tab==1?FloatingActionButton(onPressed:addTx,child:const Icon(Icons.add)):null,
+  appBar:AppBar(toolbarHeight:83,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('یه همراه کوچولو برای پول‌هات 🌸',style:TextStyle(fontSize:12,color:GolpoolStyle.muted)),const SizedBox(height:4),Text(['خانه','تراکنش‌ها','بودجه ماهانه','هدف‌های من','بیشتر'][tab],style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:GolpoolStyle.ink))]),actions:[Padding(padding:const EdgeInsets.only(left:14),child:GolpoolStyle.bubble(Icons.notifications_none_rounded))]),
+  body:Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:screen()),
+  floatingActionButton:tab==1?FloatingActionButton(backgroundColor:GolpoolStyle.rose,foregroundColor:Colors.white,onPressed:addTx,child:const Icon(Icons.add)):null,
   bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [
    NavigationDestination(icon:Icon(Icons.home_outlined),label:'خانه'),
    NavigationDestination(icon:Icon(Icons.receipt_long_outlined),label:'تراکنش‌ها'),
