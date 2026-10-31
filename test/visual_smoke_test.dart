@@ -12,15 +12,15 @@ class TestStore extends SecureFinanceStore {
 void main() {
  testWidgets('Persian navigation and approved design sections', (tester) async {
   await tester.pumpWidget(Golpool(store:TestStore()));
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(seconds:1));
   expect(find.text('گل‌پول 🌸'), findsNothing);
   expect(find.text('خرج امروز'), findsOneWidget);
   expect(find.text('حساب‌های من'), findsOneWidget);
   await tester.tap(find.byIcon(Icons.pie_chart_outline));
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(seconds:1));
   expect(find.text('خوراک'), findsWidgets);
   await tester.tap(find.byIcon(Icons.favorite_outline));
-  await tester.pumpAndSettle();
+  await tester.pump(const Duration(seconds:1));
   expect(find.text('هدف‌ها'), findsWidgets);
  });
 }
