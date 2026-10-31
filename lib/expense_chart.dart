@@ -14,7 +14,7 @@ class ExpenseChart extends StatelessWidget {
       if(entry['type']!='expense'||!(entry['date']?.toString().startsWith(month)??false))continue;
       final category=entry['category']?.toString()??'سایر';
       final amount=entry['amount'];
-      if(amount is num && amount>0) values.update(category,(v)=>v+amount.toDouble(),ifAbsent:()=>amount.toDouble());
+      if(amount is num && amount>0) { values.update(category,(v)=>v+amount.toDouble(),ifAbsent:()=>amount.toDouble()); }
     }
     final entries=values.entries.where((e)=>e.value>0).toList()..sort((a,b)=>b.value.compareTo(a.value));
     const palette=[Color(0xffda5f91),Color(0xff9a84d1),Color(0xff60c5a6),Color(0xffffbc86),Color(0xff82afdb),Color(0xffd89ab6)];
