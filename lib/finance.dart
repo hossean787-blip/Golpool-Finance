@@ -25,4 +25,31 @@ class MoneyMath {
   static int progress(int saved,int target)=>target<=0?0:((saved/target*100).round()).clamp(0,100);
   static List<Map<String,dynamic>> pending(List<Map<String,dynamic>> rows)=>rows
       .where((x)=>x['type']=='expense' && ((x['note']??'') as String).trim().isEmpty).toList();
+  /// Returns null when an account has no known opening balance.
+  static int? accountBalance(String name, Map<String,int> openings,List<Map<String,dynamic>> rows){
+    final opening=openings[name];
+    if(opening==null)return null;
+    var current=opening;
+    for(final row in rows){
+      final amount=row['amount'];
+      if(amount is! num)continue;
+      final n=amount.round();
+      if(row['type']=='income' && row['account']==name)current+=n;
+      if(row['type']=='expense' && row['account']==name)current-=n;
+      if(row['type']=='transfer'){
+        if(row['from']==name)current-=n;
+        if(row['to']==name)current+=n;
+      }
+    }
+    return current;
+  }
+
+  static int incomeForMonth(List<Map<String,dynamic>> rows,String month)=>rows
+    .where((x)=>x['type']=='income' && x['date'] is String && (x['date'] as String).startsWith(month))
+    .fold<int>(0,(sum,x)=>sum+(x['amount'] as num).round());
+
+  static int expensesForMonth(List<Map<String,dynamic>> rows,String month)=>rows
+    .where((x)=>x['type']=='expense' && x['date'] is String && (x['date'] as String).startsWith(month))
+    .fold<int>(0,(sum,x)=>sum+(x['amount'] as num).round());
+
 }
