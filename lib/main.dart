@@ -43,6 +43,7 @@ class _HomeState extends State<Home>{
     final total=budgets.values.fold<int>(0,(s,n)=>s+n);
     final used=budgets.keys.fold<int>(0,(s,c)=>s+MoneyMath.categorySpent(items,c,date().substring(0,7)));
     return ListView(children:[
+      GolpoolStyle.welcomeBanner(),
       GolpoolStyle.summary(today:money(todayAmount),remaining:money(total-used)),
       GolpoolStyle.section('حساب‌های من'),GolpoolStyle.panel(child:Column(children:cards.map((c)=>ListTile(leading:GolpoolStyle.bubble(Icons.credit_card),title:Text(c),subtitle:const Text('حساب بانکی'))).toList())),
       GolpoolStyle.section('خرج‌های بدون توضیح'),GolpoolStyle.pending(MoneyMath.pending(items).length,()=>setState(()=>tab=1)),GolpoolStyle.section('آخرین تراکنش‌ها'),
