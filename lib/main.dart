@@ -221,6 +221,7 @@ class _HomeState extends State<Home>{
    if(amount==null||amount<=0)return;
    final note=await ask('توضیح جدید');if(note==null)return;
    final category=await ask('دسته هزینه یا درآمد');if(category==null||category.trim().isEmpty)return;
+   if(!mounted)return;
    final kind=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('نوع تراکنش'),
       children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'expense'),child:const Text('هزینه')),
                 SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'income'),child:const Text('درآمد'))]));
@@ -255,6 +256,7 @@ class _HomeState extends State<Home>{
      if(value==null||value<=0||value>(goal['saved'] as num))return;
      goal['saved']=(goal['saved'] as num).round()-value;await changed();
    }else if(action=='delete'){
+     if(!mounted)return;
      final confirmed=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
        title:const Text('حذف هدف'),content:const Text('پس‌انداز ثبت‌شده در این هدف از سوابق حذف می‌شود.'),
        actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('انصراف')),
