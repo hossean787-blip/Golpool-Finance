@@ -20,6 +20,8 @@ class Golpool extends StatelessWidget {
 class Home extends StatefulWidget {final SecureFinanceStore? store; const Home({super.key,this.store});@override State<Home> createState()=>_HomeState();}
 class _HomeState extends State<Home>{
  int tab=0;
+ String txSearch='';
+ String txFilter='all';
  final List<Map<String,dynamic>> items=[];
  late final SecureFinanceStore secureStore=widget.store??SecureFinanceStore();
  bool dataReady=false;
@@ -77,16 +79,27 @@ class _HomeState extends State<Home>{
       GolpoolStyle.section('حساب‌های من'),GolpoolStyle.panel(child:Column(children:cards.map((c)=>ListTile(leading:GolpoolStyle.bubble(Icons.credit_card),title:Text(c),subtitle:Text(MoneyMath.accountBalance(c,openingBalances,items)==null?'مانده اولیه ثبت نشده':money(MoneyMath.accountBalance(c,openingBalances,items)!)))).toList())),
       GolpoolStyle.section('خرج‌های بدون توضیح'),GolpoolStyle.pending(MoneyMath.pending(items).length,()=>setState(()=>tab=1)),GolpoolStyle.section('آخرین تراکنش‌ها'),
       ...items.reversed.take(4).map((t)=>tile(t['note'].toString().isEmpty?'خرج بدون توضیح':t['note'].toString(),money(t['amount'] as num)))]);
-   case 1:return ListView(children:[
-    ...items.reversed.map((t)=>GolpoolStyle.panel(child:Column(children:[
+   case 1:
+    final matching=items.reversed.where((t)=>(txFilter=='all'||t['type']==txFilter)&&
+      (txSearch.trim().isEmpty||t['note'].toString().contains(txSearch.trim())||t['category'].toString().contains(txSearch.trim()))).toList();
+    return ListView(children:[
+    GolpoolStyle.panel(child:TextField(onChanged:(v)=>setState(()=>txSearch=v),
+      decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'جست‌وجوی تراکنش‌ها',border:InputBorder.none))),
+    Wrap(spacing:8,children:[for(final entry in {'all':'همه','expense':'برداشت','income':'واریز','transfer':'انتقال'}.entries)
+      ChoiceChip(label:Text(entry.value),selected:txFilter==entry.key,onSelected:(_)=>setState(()=>txFilter=entry.key))]),
+    const SizedBox(height:9),
+    ...matching.map((t)=>GolpoolStyle.panel(child:Column(children:[
       ListTile(title:Text(t['note'].toString().isEmpty?'بدون توضیح':t['note'].toString()),
-        subtitle:Text(money(t['amount'] as num)),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit'){editTx(t);}else{deleteTx(t);}},itemBuilder:(_)=>const [PopupMenuItem(value:'edit',child:Text('ویرایش و دسته‌بندی')),PopupMenuItem(value:'delete',child:Text('حذف تراکنش'))])),
+        subtitle:Text(money(t['amount'] as num)),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='edit'){editTx(t);}else if(v=='split'){splitTx(t);}else{deleteTx(t);}},itemBuilder:(_)=>[
+        if(t['type']=='expense')const PopupMenuItem(value:'split',child:Text('تقسیم هزینه بین دسته‌ها')),
+        if(t['type']!='transfer')const PopupMenuItem(value:'edit',child:Text('ویرایش و دسته‌بندی')),
+        const PopupMenuItem(value:'delete',child:Text('حذف تراکنش'))])),
       if(t['receipt'] is String) GestureDetector(onTap:()=>showReceipt(t),child:ClipRRect(
         borderRadius:BorderRadius.circular(14),child:Image.memory(base64Decode(t['receipt'] as String),
         height:110,fit:BoxFit.cover))),
       TextButton.icon(onPressed:()=>attachReceipt(t),icon:const Icon(Icons.add_a_photo_outlined),
         label:Text(t['receipt'] is String?'تعویض تصویر رسید':'افزودن تصویر رسید'))]))),
-    if(items.isEmpty)tile('هنوز تراکنشی ثبت نشده','با دکمه + شروع کن')]);
+    if(matching.isEmpty)tile('تراکنشی پیدا نشد','از جست‌وجو یا فیلتر دیگری استفاده کن')]);
    case 2:return ListView(children:[
     GolpoolStyle.section('بودجه‌بندی ماهانه'),
     GolpoolStyle.panel(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
@@ -242,6 +255,20 @@ class _HomeState extends State<Home>{
     'category':category.trim().isEmpty?'سایر':category.trim(),'account':account});await changed();
  }
  Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty){t['note']=s.trim();changed();}}
+ Future<void> splitTx(Map<String,dynamic> transaction)async{
+   if(transaction['type']!='expense')return;
+   final total=(transaction['amount'] as num).round();
+   final first=await ask('دسته بخش اول');if(first==null||first.trim().isEmpty)return;
+   final firstAmount=int.tryParse(await ask('مبلغ بخش اول')??'');
+   if(firstAmount==null||firstAmount<=0||firstAmount>=total){info('مبلغ بخش اول نامعتبر است.');return;}
+   final second=await ask('دسته بخش دوم');if(second==null||second.trim().isEmpty)return;
+   final parts=<Map<String,dynamic>>[
+     {'category':first.trim(),'amount':firstAmount},
+     {'category':second.trim(),'amount':total-firstAmount}
+   ];
+   if(!MoneyMath.validateParts(total,parts)){info('مجموع مبالغ باید برابر تراکنش باشد.');return;}
+   transaction['parts']=parts;transaction['category']='چندبخشی';await changed();
+ }
  Future<void> editTx(Map<String,dynamic> tx)async{
    if(tx['type']=='transfer'){info('برای اصلاح انتقال، آن را حذف و دوباره ثبت کن.');return;}
    final amount=int.tryParse(await ask('مبلغ جدید (تومان)')??'');
@@ -253,6 +280,7 @@ class _HomeState extends State<Home>{
       children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'expense'),child:const Text('هزینه')),
                 SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'income'),child:const Text('درآمد'))]));
    if(kind==null)return;
+   tx.remove('parts');
    tx..['amount']=amount..['note']=note.trim()..['category']=category.trim()..['type']=kind;
    await changed();
  }
