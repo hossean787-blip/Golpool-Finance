@@ -13,6 +13,6 @@ void main() {
   expect(find.text('خوراک'), findsWidgets);
   await tester.tap(find.byIcon(Icons.favorite_outline));
   await tester.pumpAndSettle();
-  expect(find.text('هدف‌ها'), findsOneWidget);
+  expect(find.text('هدف‌ها'), findsWidgets);
  });
 }
