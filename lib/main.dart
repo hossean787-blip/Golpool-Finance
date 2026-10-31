@@ -34,6 +34,7 @@ class _HomeState extends State<Home>{
  @override void initState(){super.initState();_load();}
  Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}
     final savedCards=data['cards']; if(savedCards is List){cards..clear()..addAll(savedCards.map((x)=>x.toString()));}
+    final savedRecurring=data['recurring'];if(savedRecurring is List){recurring..clear()..addAll(savedRecurring.map((e)=>Map<String,dynamic>.from(e as Map)));}
     final savedOpenings=data['openingBalances'];if(savedOpenings is Map){openingBalances..clear()..addAll(savedOpenings.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedBudgets=data['budgets']; if(savedBudgets is Map){budgets..clear()..addAll(savedBudgets.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedGoals=data['goals']; if(savedGoals is List){goals..clear()..addAll(savedGoals.map((x)=>Map<String,dynamic>.from(x as Map)));}
@@ -50,11 +51,12 @@ class _HomeState extends State<Home>{
    try{await task;}catch(_){if(mounted)setState(()=>secureError=true);}
  }
  Future<void> changed() async {if(mounted)setState((){});await _persist();if(!secureError)await _refreshReminders();}
- Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);}catch(_){if(mounted)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
+ Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);await reminders.updateRecurring(recurring);}catch(_){if(mounted&&widget.store==null)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
  Future<void> toggleReminders(bool value)async{if(value){try{if(!await reminders.enable()){info('مجوز اعلان داده نشد.');return;}}catch(_){info('اعلان روی این دستگاه در دسترس نیست.');return;}}setState(()=>remindersEnabled=value);await _persist();await _refreshReminders();}
 
  final cards=<String>[];
  final openingBalances=<String,int>{};
+ final recurring=<Map<String,dynamic>>[];
  final budgets=<String,int>{};
  final goals=<Map<String,dynamic>>[];
  final debts=<Map<String,dynamic>>[];
@@ -136,6 +138,13 @@ class _HomeState extends State<Home>{
       const SizedBox(height:12),
       FilledButton.icon(onPressed:exportBackup,icon:const Icon(Icons.lock_outline),label:const Text('خروجی رمزگذاری‌شده')),
       OutlinedButton.icon(onPressed:importBackup,icon:const Icon(Icons.restore),label:const Text('بازیابی از فایل'))])),
+    GolpoolStyle.section('هزینه‌های تکراری'),
+    ...recurring.map((entry)=>GolpoolStyle.panel(child:Column(children:[
+      SwitchListTile(title:Text(entry['name'].toString()),subtitle:Text('${money(entry['amount'] as num)} · روز ${entry['day']} هر ماه'),value:entry['active']==true,
+        onChanged:(v){entry['active']=v;changed();}),
+      Row(children:[TextButton.icon(onPressed:()=>recordRecurring(entry),icon:const Icon(Icons.check_circle_outline),label:const Text('ثبت پرداخت')),
+        const Spacer(),IconButton(onPressed:()=>removeRecurring(entry),icon:const Icon(Icons.delete_outline))])])),
+    FilledButton.tonalIcon(onPressed:addRecurring,icon:const Icon(Icons.add),label:const Text('هزینه تکراری جدید')),
     ...debts.map((d)=>GolpoolStyle.panel(child:ListTile(title:Text(d['person'].toString()),subtitle:Text(money(d['amount'] as num)),trailing:Switch(value:d['settled']==true,onChanged:(v){d['settled']=v;changed();})))),
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
   }
@@ -152,7 +161,7 @@ class _HomeState extends State<Home>{
    setState(()=>biometricLock=enabled);
    await _persist();
  }
- Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'openingBalances':openingBalances,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled,'biometricLock':biometricLock};
+ Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'openingBalances':openingBalances,'recurring':recurring,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled,'biometricLock':biometricLock};
  Future<String?> passwordPrompt(String title) async {
    final c=TextEditingController();
    final value=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
@@ -221,6 +230,7 @@ class _HomeState extends State<Home>{
      setState((){items..clear()..addAll((result['items'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
        cards..clear()..addAll((result['cards'] as List).map((x)=>x.toString()));
        openingBalances..clear()..addAll((result['openingBalances'] is Map ? (result['openingBalances'] as Map) : <String,int>{}).map((k,v)=>MapEntry(k.toString(),(v as num).round())));
+       recurring..clear()..addAll((result['recurring'] is List ? (result['recurring'] as List) : <dynamic>[]).map((e)=>Map<String,dynamic>.from(e as Map)));
        budgets..clear()..addAll((result['budgets'] as Map).map((k,v)=>MapEntry(k.toString(),(v as num).round())));
        goals..clear()..addAll((result['goals'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
        debts..clear()..addAll((result['debts'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
@@ -366,6 +376,39 @@ class _HomeState extends State<Home>{
   final amount=int.tryParse(await ask('سقف بودجه (تومان)')??'');
   if(amount==null||amount<=0)return;
   budgets[name.trim()]=amount;changed();
+ }
+ Future<void> addRecurring()async{
+  if(recurring.length>=100){info('حداکثر ۱۰۰ هزینه تکراری قابل ثبت است.');return;}
+  final name=await ask('نام هزینه تکراری');if(name==null||name.trim().isEmpty)return;
+  final amount=int.tryParse(await ask('مبلغ ماهانه به تومان')??'');
+  if(amount==null||amount<=0)return;
+  final day=int.tryParse(await ask('روز پرداخت هر ماه (۱ تا ۲۸)')??'');
+  if(day==null||day<1||day>28)return;
+  recurring.add({'id':DateTime.now().microsecondsSinceEpoch%100000000,'name':name.trim(),
+    'amount':amount,'day':day,'active':true,'lastPaidMonth':''});
+  await changed();
+  try{if(!await reminders.enable())info('یادآوری این پرداخت نیازمند مجوز اعلان است.');}catch(_){info('مجوز اعلان در دسترس نیست.');}
+ }
+ Future<void> recordRecurring(Map<String,dynamic> entry)async{
+   final month=date().substring(0,7);
+   if(entry['lastPaidMonth']==month){info('پرداخت این ماه قبلاً ثبت شده است.');return;}
+   String? account;
+   if(cards.isNotEmpty){account=await chooseAccount('حساب پرداخت');if(account==null)return;}
+   final amount=(entry['amount'] as num).round();
+   if(account!=null){
+     final available=MoneyMath.accountBalance(account,openingBalances,items);
+     if(available!=null&&amount>available){info('مانده حساب کافی نیست.');return;}
+   }
+   items.add({'type':'expense','date':date(),'amount':amount,'note':entry['name'],
+     'category':'هزینه تکراری','account':account});
+   entry['lastPaidMonth']=month;await changed();
+ }
+ Future<void> removeRecurring(Map<String,dynamic> entry)async{
+   final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+     title:const Text('حذف هزینه تکراری'),content:const Text('سوابق پرداخت قبلی حذف نمی‌شود.'),
+     actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('انصراف')),
+       FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))]));
+   if(yes==true){recurring.remove(entry);await changed();}
  }
  Future<void> addDebt()async{
   final who=await ask('نام شخص');if(who==null||who.isEmpty)return;
