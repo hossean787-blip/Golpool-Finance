@@ -104,6 +104,7 @@ class _HomeState extends State<Home>{
     if(matching.isEmpty)tile('تراکنشی پیدا نشد','از جست‌وجو یا فیلتر دیگری استفاده کن')]);
    case 2:return ListView(children:[
     GolpoolStyle.section('بودجه‌بندی ماهانه'),
+    GolpoolStyle.budgetGauge(spent:MoneyMath.expensesForMonth(items,date().substring(0,7)),limit:budgets.values.fold<int>(0,(a,b)=>a+b)),
     GolpoolStyle.panel(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
       Text('درآمد ماه: ${money(MoneyMath.incomeForMonth(items,date().substring(0,7)))}'),
       Text('هزینه ماه: ${money(MoneyMath.expensesForMonth(items,date().substring(0,7)))}'),
