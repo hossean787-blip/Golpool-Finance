@@ -50,23 +50,18 @@ class _HomeState extends State<Home>{
    case 1:return ListView(children:[
     ...items.reversed.map((t)=>tile(t['note'].toString().isEmpty?'بدون توضیح':t['note'].toString(),money(t['amount'] as num),action:()=>explain(t))),
     if(items.isEmpty)tile('هنوز تراکنشی ثبت نشده','با دکمه + شروع کن')]);
-   case 2:return ListView(children:budgets.entries.map((e){
-    final used=MoneyMath.categorySpent(items,e.key,date().substring(0,7));
-    final percent=used/e.value;
-    return GolpoolStyle.panel(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
-      Text(e.key,style:const TextStyle(fontWeight:FontWeight.bold)),
-      const SizedBox(height:8),GolpoolStyle.progress(percent),
-      Text('${money(used)} از ${money(e.value)}'),
-      if(percent>=0.7)const Text('یه یادآوری کوچولو: داری به سقف بودجه نزدیک می‌شی 💗',style:TextStyle(color:Colors.pink))
-    ]));
-   }).toList());
+   case 2:return ListView(children:[
+    GolpoolStyle.section('بودجه‌بندی ماهانه'),
+    ...budgets.entries.map((e){
+      final used=MoneyMath.categorySpent(items,e.key,date().substring(0,7));
+      return GolpoolStyle.categoryBudget(e.key,money(used),money(e.value),e.value==0?0:used/e.value);
+    })]);
    case 3:return ListView(children:[
-    ...goals.map((g)=>GolpoolStyle.panel(child:Column(children:[
-      Text(g['name'].toString()),const SizedBox(height:8),
-      GolpoolStyle.progress(MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,color:GolpoolStyle.mint),
-      Text('${money(g['saved'] as int)} از ${money(g['target'] as int)}'),
-      TextButton(onPressed:()=>saveGoal(g),child:const Text('افزودن پس‌انداز'))]))),
-    FilledButton(onPressed:addGoal,child:const Text('هدف جدید'))]);
+    GolpoolStyle.section('هدف‌های پس‌انداز'),
+    ...goals.map((g)=>GolpoolStyle.goalCard(g['name'].toString(),money(g['saved'] as int),
+      money(g['target'] as int),MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,
+      ()=>saveGoal(g))),
+    FilledButton.icon(onPressed:addGoal,icon:const Icon(Icons.add),label:const Text('هدف جدید'))]);
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
     FilledButton(onPressed:addCard,child:const Text('افزودن کارت')),
@@ -90,19 +85,19 @@ class _HomeState extends State<Home>{
   if(note==null)return;
   items.add({'type':'expense','date':date(),'amount':sum,'note':note,'category':'سایر'});changed();
  }
- Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty)t['note']=s.trim();changed();}
+ Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty){t['note']=s.trim();changed();}}
  Future<void> addGoal()async{
   final name=await ask('نام هدف');if(name==null||name.isEmpty)return;
-  final sum=int.tryParse(await ask('مبلغ هدف')??'');if(sum!=null&&sum>0)goals.add({'name':name,'saved':0,'target':sum});changed();
+  final sum=int.tryParse(await ask('مبلغ هدف')??'');if(sum!=null&&sum>0){goals.add({'name':name,'saved':0,'target':sum});changed();}
  }
  Future<void> saveGoal(Map<String,dynamic> g)async{
-  final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0)g['saved']=(g['saved'] as int)+sum;changed();
+  final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0){g['saved']=(g['saved'] as int)+sum;changed();}
  }
- Future<void> addCard()async{final name=await ask('نام کارت یا بانک');if(name!=null&&name.isNotEmpty)cards.add(name);changed();}
+ Future<void> addCard()async{final name=await ask('نام کارت یا بانک');if(name!=null&&name.isNotEmpty){cards.add(name);changed();}}
  Future<void> addDebt()async{
   final who=await ask('نام شخص');if(who==null||who.isEmpty)return;
   final sum=int.tryParse(await ask('مبلغ قرض')??'');
-  if(sum!=null&&sum>0)debts.add({'person':who,'amount':sum,'settled':false});changed();
+  if(sum!=null&&sum>0){debts.add({'person':who,'amount':sum,'settled':false});changed();}
  }
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
   appBar:AppBar(toolbarHeight:83,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('یه همراه کوچولو برای پول‌هات 🌸',style:TextStyle(fontSize:12,color:GolpoolStyle.muted)),const SizedBox(height:4),Text(['خانه','تراکنش‌ها','بودجه ماهانه','هدف‌های من','بیشتر'][tab],style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:GolpoolStyle.ink))]),actions:[Padding(padding:const EdgeInsets.only(left:14),child:GolpoolStyle.bubble(Icons.notifications_none_rounded))]),
