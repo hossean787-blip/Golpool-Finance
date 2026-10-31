@@ -68,6 +68,12 @@ jobs:
           ''',1)
           s=s.replace('signingConfig = signingConfigs.getByName("debug")','signingConfig = signingConfigs.getByName("golpoolRelease")')
           s=s.replace('applicationId = "ir.golpool.golpool"','applicationId = "ir.golpool.finance"')
+          s=s.replace('compileOptions {', '''compileOptions {
+                  isCoreLibraryDesugaringEnabled = true
+          ''',1)
+          s=s.replace('dependencies {','''dependencies {
+              coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+          ''',1)
           p.write_text(s)
           PY
       - name: Build signed release APK
