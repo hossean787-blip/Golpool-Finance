@@ -38,9 +38,9 @@ class _HomeState extends State<Home>{
  Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);}catch(_){if(mounted)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
  Future<void> toggleReminders(bool value)async{if(value){try{if(!await reminders.enable()){info('مجوز اعلان داده نشد.');return;}}catch(_){info('اعلان روی این دستگاه در دسترس نیست.');return;}}setState(()=>remindersEnabled=value);await _persist();await _refreshReminders();}
 
- final cards=['بانک اول','بانک دوم'];
- final budgets={'خوراک':4000000,'پوشاک':5000000,'زیبایی':2500000,'خانه':3000000,'رفت‌وآمد':1500000,'تفریح':2000000};
- final goals=<Map<String,dynamic>>[{'name':'خرید گوشی','saved':18000000,'target':60000000}];
+ final cards=<String>[];
+ final budgets=<String,int>{};
+ final goals=<Map<String,dynamic>>[];
  final debts=<Map<String,dynamic>>[];
  String date(){final d=DateTime.now();return [d.year,d.month.toString().padLeft(2,'0'),d.day.toString().padLeft(2,'0')].join('-');}
  String money(num n)=>GolpoolStyle.money(n);
@@ -75,6 +75,7 @@ class _HomeState extends State<Home>{
     if(items.isEmpty)tile('هنوز تراکنشی ثبت نشده','با دکمه + شروع کن')]);
    case 2:return ListView(children:[
     GolpoolStyle.section('بودجه‌بندی ماهانه'),
+    if(budgets.isEmpty)tile('بودجه‌ای تعریف نشده','در این نسخه بودجه پیش‌فرض ساختگی نمایش داده نمی‌شود.'),
     ...budgets.entries.map((e){
       final used=MoneyMath.categorySpent(items,e.key,date().substring(0,7));
       return GolpoolStyle.categoryBudget(e.key,money(used),money(e.value),e.value==0?0:used/e.value);
@@ -88,6 +89,7 @@ class _HomeState extends State<Home>{
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
     FilledButton(onPressed:addCard,child:const Text('افزودن کارت')),
+    FilledButton.tonal(onPressed:addBudget,child:const Text('تعریف بودجه ماهانه')),
     GolpoolStyle.panel(child:SwitchListTile(
       title:const Text('یادآوری شبانه'),
       subtitle:const Text('۲۱:۰۰ و ۲۲:۳۰، فقط وقتی خرج نامشخص باقی مانده باشد؛ ساعت تقریبی'),
@@ -196,6 +198,13 @@ class _HomeState extends State<Home>{
   final sum=int.tryParse(await ask('مبلغ پس‌انداز')??'');if(sum!=null&&sum>0){g['saved']=(g['saved'] as int)+sum;changed();}
  }
  Future<void> addCard()async{final name=await ask('نام کارت یا بانک');if(name!=null&&name.isNotEmpty){cards.add(name);changed();}}
+ Future<void> addBudget()async{
+  final name=await ask('دسته بودجه (مثلاً خوراک)');
+  if(name==null||name.trim().isEmpty)return;
+  final amount=int.tryParse(await ask('سقف بودجه (تومان)')??'');
+  if(amount==null||amount<=0)return;
+  budgets[name.trim()]=amount;changed();
+ }
  Future<void> addDebt()async{
   final who=await ask('نام شخص');if(who==null||who.isEmpty)return;
   final sum=int.tryParse(await ask('مبلغ قرض')??'');
