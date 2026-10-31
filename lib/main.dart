@@ -32,9 +32,9 @@ class _HomeState extends State<Home>{
     final savedBudgets=data['budgets']; if(savedBudgets is Map){budgets..clear()..addAll(savedBudgets.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedGoals=data['goals']; if(savedGoals is List){goals..clear()..addAll(savedGoals.map((x)=>Map<String,dynamic>.from(x as Map)));}
     remindersEnabled=data['remindersEnabled']==true;
-    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}if(widget.store==null){try{await reminders.initialize();}catch(_){/* unavailable on simulator */}}if(mounted)setState(()=>dataReady=true);}
+    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}if(widget.store==null){try{await reminders.initialize();await _refreshReminders();}catch(_){/* not available on this device */}}if(mounted)setState(()=>dataReady=true);}
  Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled});}catch(_){if(mounted)setState(()=>secureError=true);}}
- void changed(){setState((){});_persist();_refreshReminders();}
+ Future<void> changed() async {if(mounted)setState((){});await _persist();if(!secureError)await _refreshReminders();}
  Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);}catch(_){if(mounted)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
  Future<void> toggleReminders(bool value)async{if(value){try{if(!await reminders.enable()){info('مجوز اعلان داده نشد.');return;}}catch(_){info('اعلان روی این دستگاه در دسترس نیست.');return;}}setState(()=>remindersEnabled=value);await _persist();await _refreshReminders();}
 
@@ -121,8 +121,10 @@ class _HomeState extends State<Home>{
      if(image==null)return;
      final bytes=await image.readAsBytes();
      if(bytes.length>280000){info('حجم تصویر زیاد است؛ تصویر کوچک‌تری انتخاب کنید.');return;}
+     final previous=transaction['receipt'];
      transaction['receipt']=base64Encode(bytes);
-     await _persist();if(mounted)setState((){});
+     await _persist();if(secureError){if(previous==null){transaction.remove('receipt');}else{transaction['receipt']=previous;}return;}
+     if(mounted)setState((){});
      info('رسید ذخیره شد.');
    }catch(_){info('دسترسی به تصویر یا ذخیره آن ممکن نشد.');}
  }
