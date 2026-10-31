@@ -73,6 +73,11 @@ jobs:
           ''',1)
           s += '\n// Required for scheduled notifications\ndependencies { coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5") }\n'
           p.write_text(s)
+          manifest=Path('android/app/src/main/AndroidManifest.xml')
+          xml=manifest.read_text()
+          xml=xml.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>')
+          xml=xml.replace('</application>', '    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />\n    <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">\n      <intent-filter>\n        <action android:name="android.intent.action.BOOT_COMPLETED"/>\n        <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>\n      </intent-filter>\n    </receiver>\n</application>')
+          manifest.write_text(xml)
           PY
       - name: Build signed release APK
         run: flutter build apk --release --build-number="${{ github.run_number }}"
