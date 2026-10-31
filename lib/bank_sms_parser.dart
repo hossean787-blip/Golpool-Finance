@@ -11,8 +11,8 @@ class BankSmsCandidate {
 class BankSmsParser {
   static BankSmsCandidate? parse(String message) {
     final clean = message
-       .replaceAll(RegExp(r'[۰-۹]'), (m) => String.fromCharCode(m.group(0)!.codeUnitAt(0)-0x06F0+0x30))
-       .replaceAll(RegExp(r'[٠-٩]'), (m) => String.fromCharCode(m.group(0)!.codeUnitAt(0)-0x0660+0x30));
+       .replaceAllMapped(RegExp(r'[۰-۹]'), (m) => String.fromCharCode(m.group(0)!.codeUnitAt(0)-0x06F0+0x30))
+       .replaceAllMapped(RegExp(r'[٠-٩]'), (m) => String.fromCharCode(m.group(0)!.codeUnitAt(0)-0x0660+0x30));
     final debit=RegExp(r'برداشت|خرید|کسر از حساب').hasMatch(clean);
     final credit=RegExp(r'واریز|افزایش موجودی|بستانکار').hasMatch(clean);
     if(debit==credit) return null;
