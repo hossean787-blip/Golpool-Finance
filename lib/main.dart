@@ -32,7 +32,7 @@ class _HomeState extends State<Home>{
     final savedBudgets=data['budgets']; if(savedBudgets is Map){budgets..clear()..addAll(savedBudgets.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedGoals=data['goals']; if(savedGoals is List){goals..clear()..addAll(savedGoals.map((x)=>Map<String,dynamic>.from(x as Map)));}
     remindersEnabled=data['remindersEnabled']==true;
-    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}try{await reminders.initialize();}catch(_){/* unavailable on simulator */}if(mounted)setState(()=>dataReady=true);}
+    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}if(widget.store==null){try{await reminders.initialize();}catch(_){/* unavailable on simulator */}}if(mounted)setState(()=>dataReady=true);}
  Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled});}catch(_){if(mounted)setState(()=>secureError=true);}}
  void changed(){setState((){});_persist();_refreshReminders();}
  Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);}catch(_){if(mounted)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
