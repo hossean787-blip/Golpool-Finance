@@ -4,7 +4,7 @@ import 'package:timezone/data/latest.dart' as zones;
 import 'package:timezone/timezone.dart' as tz;
 
 /// Requests notification permission only when the user enables reminders.
-/// Schedules two local, non-exact reminders; cancels both when nothing is pending.
+/// Schedules two one-time, non-exact reminders. Reschedule when the app opens or pending expenses change.
 class FinancialReminders {
   static const firstId=2100;
   static const secondId=2230;
@@ -49,7 +49,6 @@ class FinancialReminders {
         channelDescription:'یادآوری آرام ثبت خرج‌های نامشخص',
         importance:Importance.defaultImportance,priority:Priority.defaultPriority),
       iOS:DarwinNotificationDetails()),
-      androidScheduleMode:AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents:DateTimeComponents.time);
+      androidScheduleMode:AndroidScheduleMode.inexactAllowWhileIdle);
   }
 }
