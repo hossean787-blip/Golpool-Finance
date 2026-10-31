@@ -51,6 +51,8 @@ class FinancialReminders {
       iOS:DarwinNotificationDetails()),
       androidScheduleMode:AndroidScheduleMode.inexactAllowWhileIdle);
   }
+  Future<void> cancelRecurring(int rawId)=>plugin.cancel(id:10000+(rawId%100000000));
+
   Future<void> updateRecurring(List<Map<String,dynamic>> entries)async{
     final now=tz.TZDateTime.now(tz.local);
     for(final entry in entries.take(100)){
