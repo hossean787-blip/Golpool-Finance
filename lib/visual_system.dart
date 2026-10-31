@@ -54,10 +54,10 @@ class GolpoolStyle {
      borderRadius:BorderRadius.circular(29),
      boxShadow:[BoxShadow(color:rose.withValues(alpha:.12),blurRadius:23,offset:const Offset(0,10))]),
    child:Row(children:[
-     Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-       const Text('گل‌پولِ من 🌷',style:TextStyle(color:ink,fontSize:23,fontWeight:FontWeight.w900)),
-       const SizedBox(height:9),
-       const Text('برای آرزوهای قشنگ و تصمیم‌های هوشمندانه',style:TextStyle(color:ink,fontSize:12,height:1.65))])),
+     const Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+       Text('گل‌پولِ من 🌷',style:TextStyle(color:ink,fontSize:23,fontWeight:FontWeight.w900)),
+       SizedBox(height:9),
+       Text('برای آرزوهای قشنگ و تصمیم‌های هوشمندانه',style:TextStyle(color:ink,fontSize:12,height:1.65))])),
      Container(width:65,height:65,alignment:Alignment.center,
        decoration:BoxDecoration(color:Colors.white.withValues(alpha:.65),shape:BoxShape.circle),
        child:const Icon(Icons.local_florist_rounded,color:rose,size:38))]));
