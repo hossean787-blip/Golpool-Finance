@@ -46,6 +46,24 @@ class GolpoolStyle {
     Icon(icon,color:rose,size:20)]),const SizedBox(height:18),
    FittedBox(fit:BoxFit.scaleDown,alignment:Alignment.centerRight,child:Text(value,
     style:const TextStyle(fontSize:20,fontWeight:FontWeight.w900,color:ink)))]));
+ static Widget goalCard(String name,String saved,String target,double percent,VoidCallback onAdd)=>panel(
+  color:const Color(0xfffffbfd),child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   Row(children:[bubble(Icons.favorite_outline_rounded),const SizedBox(width:12),
+    Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(name,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17)),
+      const SizedBox(height:4),Text('$saved از $target',style:const TextStyle(color:muted,fontSize:12))])),
+    Text('${(percent*100).round()}٪',style:const TextStyle(fontWeight:FontWeight.bold,color:mint,fontSize:18))]),
+   progress(percent,color:mint),
+   Align(alignment:Alignment.centerLeft,child:FilledButton.tonalIcon(
+    onPressed:onAdd,icon:const Icon(Icons.add),label:const Text('افزودن پس‌انداز')))]));
+ static Widget categoryBudget(String title,String used,String limit,double percent)=>panel(
+  child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
+   Row(children:[bubble(Icons.spa_outlined),const SizedBox(width:10),
+    Expanded(child:Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15))),
+    Text('${(percent*100).round()}٪',style:const TextStyle(color:rose,fontWeight:FontWeight.bold))]),
+   progress(percent),Text('$used از $limit',style:const TextStyle(color:muted,fontSize:12)),
+   if(percent>=.7)const Padding(padding:EdgeInsets.only(top:8),child:Text(
+    'یه یادآوری کوچولو؛ داری به سقف بودجه نزدیک می‌شی 💗',style:TextStyle(color:rose,fontSize:12)))]));
  static Widget pending(int count,VoidCallback open)=>panel(color:const Color(0xfffff7fa),
   child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
    Text(count==0?'همه تراکنش‌ها توضیح دارند 🌷':'$count تراکنش منتظرند بگی بابت چی بودن.',
