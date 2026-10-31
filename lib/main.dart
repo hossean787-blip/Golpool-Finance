@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:golpool/expense_chart.dart';
 import 'package:golpool/backup_service.dart';
+import 'package:golpool/financial_reminders.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:golpool/finance.dart';
@@ -24,14 +25,19 @@ class _HomeState extends State<Home>{
  late final SecureFinanceStore secureStore=widget.store??SecureFinanceStore();
  bool dataReady=false;
  bool secureError=false;
+ bool remindersEnabled=false;
+ final FinancialReminders reminders=FinancialReminders();
  @override void initState(){super.initState();_load();}
  Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}
     final savedCards=data['cards']; if(savedCards is List){cards..clear()..addAll(savedCards.map((x)=>x.toString()));}
     final savedBudgets=data['budgets']; if(savedBudgets is Map){budgets..clear()..addAll(savedBudgets.map((k,v)=>MapEntry(k.toString(),(v as num).round())));}
     final savedGoals=data['goals']; if(savedGoals is List){goals..clear()..addAll(savedGoals.map((x)=>Map<String,dynamic>.from(x as Map)));}
-    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}if(mounted)setState(()=>dataReady=true);}
- Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts});}catch(_){if(mounted)setState(()=>secureError=true);}}
- void changed(){setState((){});_persist();}
+    remindersEnabled=data['remindersEnabled']==true;
+    final savedDebts=data['debts']; if(savedDebts is List){debts..clear()..addAll(savedDebts.map((x)=>Map<String,dynamic>.from(x as Map)));}}}catch(_){secureError=true;}try{await reminders.initialize();}catch(_){/* unavailable on simulator */}if(mounted)setState(()=>dataReady=true);}
+ Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled});}catch(_){if(mounted)setState(()=>secureError=true);}}
+ void changed(){setState((){});_persist();_refreshReminders();}
+ Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);}catch(_){if(mounted)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
+ Future<void> toggleReminders(bool value)async{if(value){try{if(!await reminders.enable()){info('مجوز اعلان داده نشد.');return;}}catch(_){info('اعلان روی این دستگاه در دسترس نیست.');return;}}setState(()=>remindersEnabled=value);await _persist();await _refreshReminders();}
 
  final cards=['بانک اول','بانک دوم'];
  final budgets={'خوراک':4000000,'پوشاک':5000000,'زیبایی':2500000,'خانه':3000000,'رفت‌وآمد':1500000,'تفریح':2000000};
@@ -83,7 +89,10 @@ class _HomeState extends State<Home>{
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
     FilledButton(onPressed:addCard,child:const Text('افزودن کارت')),
-    tile('یادآوری شبانه','۲۱:۰۰ و در صورت عدم تکمیل ۲۲:۳۰ (فعلاً غیرفعال)'),
+    GolpoolStyle.panel(child:SwitchListTile(
+      title:const Text('یادآوری شبانه'),
+      subtitle:const Text('۲۱:۰۰ و ۲۲:۳۰، فقط وقتی خرج نامشخص باقی مانده باشد؛ ساعت تقریبی'),
+      value:remindersEnabled,onChanged:toggleReminders)),
     GolpoolStyle.section('پشتیبان‌گیری امن'),
     GolpoolStyle.panel(child:Column(children:[
       const Text('فایل پشتیبان با رمز انتخابی شما رمزگذاری می‌شود. رمز را فراموش نکنید.'),
@@ -94,7 +103,7 @@ class _HomeState extends State<Home>{
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
   }
  }
- Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts};
+ Map<String,dynamic> snapshot()=>{'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled};
  Future<String?> passwordPrompt(String title) async {
    final c=TextEditingController();
    final value=await showDialog<String>(context:context,builder:(ctx)=>AlertDialog(
@@ -159,7 +168,9 @@ class _HomeState extends State<Home>{
        cards..clear()..addAll((result['cards'] as List).map((x)=>x.toString()));
        budgets..clear()..addAll((result['budgets'] as Map).map((k,v)=>MapEntry(k.toString(),(v as num).round())));
        goals..clear()..addAll((result['goals'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
-       debts..clear()..addAll((result['debts'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));});
+       debts..clear()..addAll((result['debts'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
+       remindersEnabled=result['remindersEnabled']==true;});
+     await _refreshReminders();
      info('بازیابی موفق بود.');
    }catch(_){info('رمز نادرست یا فایل نامعتبر است؛ اطلاعات تغییر نکرد.');}
  }
