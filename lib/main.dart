@@ -55,7 +55,7 @@ class _HomeState extends State<Home>{
     return GolpoolStyle.panel(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
       Text(e.key,style:const TextStyle(fontWeight:FontWeight.bold)),
       const SizedBox(height:8),GolpoolStyle.progress(percent),
-      Text(money(used)+' از '+money(e.value)),
+      Text('${money(used)} از ${money(e.value)}'),
       if(percent>=0.7)const Text('یه یادآوری کوچولو: داری به سقف بودجه نزدیک می‌شی 💗',style:TextStyle(color:Colors.pink))
     ]));
    }).toList());
@@ -63,15 +63,15 @@ class _HomeState extends State<Home>{
     ...goals.map((g)=>GolpoolStyle.panel(child:Column(children:[
       Text(g['name'].toString()),const SizedBox(height:8),
       GolpoolStyle.progress(MoneyMath.progress(g['saved'] as int,g['target'] as int)/100,color:GolpoolStyle.mint),
-      Text(money(g['saved'] as int)+' از '+money(g['target'] as int)),
-      TextButton(onPressed:()=>saveGoal(g),child:const Text('افزودن پس‌انداز'))])),
+      Text('${money(g['saved'] as int)} از ${money(g['target'] as int)}'),
+      TextButton(onPressed:()=>saveGoal(g),child:const Text('افزودن پس‌انداز'))]))),
     FilledButton(onPressed:addGoal,child:const Text('هدف جدید'))]);
    default:return ListView(children:[
     tile('کارت‌های بانکی',cards.join('، ')),
     FilledButton(onPressed:addCard,child:const Text('افزودن کارت')),
     tile('یادآوری شبانه','۲۱:۰۰ و در صورت عدم تکمیل ۲۲:۳۰ (فعلاً غیرفعال)'),
     tile('امنیت و پشتیبان‌گیری','نسخه آزمایشی؛ اطلاعات واقعی وارد نکنید'),
-    ...debts.map((d)=>tile(d['person'].toString(),money(d['amount'] as num)+' · '+(d['settled']==true?'تسویه شده':'باز'))),
+    ...debts.map((d)=>tile(d['person'].toString(),'${money(d['amount'] as num)} · ${d['settled']==true?'تسویه شده':'باز'}')),
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
   }
  }
