@@ -16,7 +16,7 @@ class FinancialReminders {
     zones.initializeTimeZones();
     final zone=await FlutterTimezone.getLocalTimezone();
     tz.setLocalLocation(tz.getLocation(zone.identifier));
-    await plugin.initialize(const InitializationSettings(
+    await plugin.initialize(settings:const InitializationSettings(
       android:AndroidInitializationSettings('@mipmap/ic_launcher'),
       iOS:DarwinInitializationSettings()));
   }
@@ -30,8 +30,8 @@ class FinancialReminders {
   }
 
   Future<void> update({required bool enabled,required int pendingCount}) async {
-    await plugin.cancel(firstId);
-    await plugin.cancel(secondId);
+    await plugin.cancel(id:firstId);
+    await plugin.cancel(id:secondId);
     if(!enabled||pendingCount<=0)return;
     await _schedule(firstId,21,0,'خرج‌های امروز 💗',
       'چند خرج منتظرند بهشان توضیح بدهی.');
@@ -43,7 +43,7 @@ class FinancialReminders {
     final now=tz.TZDateTime.now(tz.local);
     var next=tz.TZDateTime(tz.local,now.year,now.month,now.day,hour,minute);
     if(!next.isAfter(now))next=next.add(const Duration(days:1));
-    await plugin.zonedSchedule(id,title,body,next,
+    await plugin.zonedSchedule(id:id,title:title,body:body,scheduledDate:next,notificationDetails:
       const NotificationDetails(android:AndroidNotificationDetails(
         'golpool_expenses','یادآوری خرج‌ها',
         channelDescription:'یادآوری آرام ثبت خرج‌های نامشخص',
