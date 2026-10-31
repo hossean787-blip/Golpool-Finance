@@ -28,6 +28,7 @@ class _HomeState extends State<Home>{
  bool biometricLock=false;
  bool unlocked=true;
  final FinancialReminders reminders=FinancialReminders();
+ Future<void> _writeTail=Future<void>.value();
  @override void initState(){super.initState();_load();}
  Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}
     final savedCards=data['cards']; if(savedCards is List){cards..clear()..addAll(savedCards.map((x)=>x.toString()));}
@@ -39,7 +40,12 @@ class _HomeState extends State<Home>{
    if(biometricLock&&widget.store==null){unlocked=false;}
    if(mounted)setState(()=>dataReady=true);
    if(!unlocked)await unlockDevice();}
- Future<void> _persist() async {try{await secureStore.save({'items':items,'cards':cards,'budgets':budgets,'goals':goals,'debts':debts,'remindersEnabled':remindersEnabled,'biometricLock':biometricLock});}catch(_){if(mounted)setState(()=>secureError=true);}}
+ Future<void> _persist() async {
+   final state=snapshot();
+   final task=_writeTail.then((_)=>secureStore.save(state));
+   _writeTail=task.catchError((Object _){});
+   try{await task;}catch(_){if(mounted)setState(()=>secureError=true);}
+ }
  Future<void> changed() async {if(mounted)setState((){});await _persist();if(!secureError)await _refreshReminders();}
  Future<void> _refreshReminders() async {try{await reminders.update(enabled:remindersEnabled,pendingCount:MoneyMath.pending(items).length);}catch(_){if(mounted)info('زمان‌بندی اعلان‌ها روی این دستگاه ممکن نشد.');}}
  Future<void> toggleReminders(bool value)async{if(value){try{if(!await reminders.enable()){info('مجوز اعلان داده نشد.');return;}}catch(_){info('اعلان روی این دستگاه در دسترس نیست.');return;}}setState(()=>remindersEnabled=value);await _persist();await _refreshReminders();}
@@ -185,6 +191,9 @@ class _HomeState extends State<Home>{
        actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('انصراف')),
          FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('بازیابی'))]));
      if(confirm!=true)return;
+     // Backup files may not silently enable or disable the device lock.
+     result['biometricLock']=biometricLock;
+     await _writeTail;
      await secureStore.save(result);
      if(!mounted)return;
      setState((){items..clear()..addAll((result['items'] as List).map((x)=>Map<String,dynamic>.from(x as Map)));
