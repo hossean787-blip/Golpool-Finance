@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:golpool/finance.dart';
 import 'package:golpool/visual_system.dart';
+import 'package:golpool/secure_finance_store.dart';
 void main()=>runApp(const Golpool());
 class Golpool extends StatelessWidget {
  const Golpool({super.key});
@@ -10,6 +11,14 @@ class Home extends StatefulWidget {const Home({super.key});@override State<Home>
 class _HomeState extends State<Home>{
  int tab=0;
  final List<Map<String,dynamic>> items=[];
+ final SecureFinanceStore secureStore=SecureFinanceStore();
+ bool dataReady=false;
+ bool secureError=false;
+ @override void initState(){super.initState();_load();}
+ Future<void> _load() async {try {final data=await secureStore.load();if(data!=null){final stored=data['items'];if(stored is List){items..clear()..addAll(stored.map((e)=>Map<String,dynamic>.from(e as Map)));}}}catch(_){secureError=true;}if(mounted)setState(()=>dataReady=true);}
+ Future<void> _persist() async {try{await secureStore.save({'items':items});}catch(_){if(mounted)setState(()=>secureError=true);}}
+ void changed(){setState((){});_persist();}
+
  final cards=['بانک اول','بانک دوم'];
  final budgets={'خوراک':4000000,'پوشاک':5000000,'زیبایی':2500000,'خانه':3000000,'رفت‌وآمد':1500000,'تفریح':2000000};
  final goals=<Map<String,dynamic>>[{'name':'خرید گوشی','saved':18000000,'target':60000000}];
@@ -74,9 +83,9 @@ class _HomeState extends State<Home>{
   if(sum==null||sum<=0)return;
   final note=await ask('توضیح هزینه (اختیاری)');
   if(note==null)return;
-  setState(()=>items.add({'type':'expense','date':date(),'amount':sum,'note':note,'category':'سایر'}));
+  items.add({'type':'expense','date':date(),'amount':sum,'note':note,'category':'سایر'});changed();
  }
- Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty)setState(()=>t['note']=s.trim());}
+ Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty)t['note']=s.trim();changed();}
  Future<void> addGoal()async{
   final name=await ask('نام هدف');if(name==null||name.isEmpty)return;
   final sum=int.tryParse(await ask('مبلغ هدف')??'');if(sum!=null&&sum>0)setState(()=>goals.add({'name':name,'saved':0,'target':sum}));
@@ -92,8 +101,8 @@ class _HomeState extends State<Home>{
  }
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
   appBar:AppBar(toolbarHeight:83,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('یه همراه کوچولو برای پول‌هات 🌸',style:TextStyle(fontSize:12,color:GolpoolStyle.muted)),const SizedBox(height:4),Text(['خانه','تراکنش‌ها','بودجه ماهانه','هدف‌های من','بیشتر'][tab],style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:GolpoolStyle.ink))]),actions:[Padding(padding:const EdgeInsets.only(left:14),child:GolpoolStyle.bubble(Icons.notifications_none_rounded))]),
-  body:Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:screen()),
-  floatingActionButton:tab==1?FloatingActionButton(backgroundColor:GolpoolStyle.rose,foregroundColor:Colors.white,onPressed:addTx,child:const Icon(Icons.add)):null,
+  body:!dataReady?const Center(child:CircularProgressIndicator()):secureError?const Center(child:Text('خطای ذخیره‌سازی امن؛ برای حفاظت از داده‌ها ثبت اطلاعات متوقف شد.')):Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:screen()),
+  floatingActionButton:tab==1&&dataReady&&!secureError?FloatingActionButton(backgroundColor:GolpoolStyle.rose,foregroundColor:Colors.white,onPressed:addTx,child:const Icon(Icons.add)):null,
   bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(v)=>setState(()=>tab=v),destinations:const [
    NavigationDestination(icon:Icon(Icons.home_outlined),label:'خانه'),
    NavigationDestination(icon:Icon(Icons.receipt_long_outlined),label:'تراکنش‌ها'),
