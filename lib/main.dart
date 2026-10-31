@@ -4,14 +4,15 @@ import 'package:golpool/visual_system.dart';
 import 'package:golpool/secure_finance_store.dart';
 void main()=>runApp(const Golpool());
 class Golpool extends StatelessWidget {
- const Golpool({super.key});
- @override Widget build(BuildContext context)=>MaterialApp(debugShowCheckedModeBanner:false,title:'گل‌پول',theme:GolpoolStyle.theme,home:const Home());
+ final SecureFinanceStore? store;
+ const Golpool({super.key,this.store});
+ @override Widget build(BuildContext context)=>MaterialApp(debugShowCheckedModeBanner:false,title:'گل‌پول',theme:GolpoolStyle.theme,home:Home(store:store));
 }
-class Home extends StatefulWidget {const Home({super.key});@override State<Home> createState()=>_HomeState();}
+class Home extends StatefulWidget {final SecureFinanceStore? store; const Home({super.key,this.store});@override State<Home> createState()=>_HomeState();}
 class _HomeState extends State<Home>{
  int tab=0;
  final List<Map<String,dynamic>> items=[];
- final SecureFinanceStore secureStore=SecureFinanceStore();
+ late final SecureFinanceStore secureStore=widget.store??SecureFinanceStore();
  bool dataReady=false;
  bool secureError=false;
  @override void initState(){super.initState();_load();}
