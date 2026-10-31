@@ -146,7 +146,7 @@ class _HomeState extends State<Home>{
    }catch(_){info('ساخت یا اشتراک‌گذاری پشتیبان انجام نشد.');}
  }
  Future<void> importBackup()async{
-   final selected=await FilePicker.platform.pickFiles(type:FileType.any,withData:true);
+   final selected=await FilePicker().pickFiles(type:FileType.any,withData:true);
    if(selected==null||selected.files.isEmpty)return;
    final f=selected.files.single;
    if(f.size>20000000){info('فایل بزرگ‌تر از حد مجاز است.');return;}
