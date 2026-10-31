@@ -18,7 +18,7 @@ void main() {
   expect(find.text('حساب‌های من'), findsOneWidget);
   await tester.tap(find.byIcon(Icons.pie_chart_outline));
   await tester.pump(const Duration(seconds:1));
-  expect(find.text('خوراک'), findsWidgets);
+  expect(find.text('بودجه‌ای تعریف نشده'), findsOneWidget);
   await tester.tap(find.byIcon(Icons.favorite_outline));
   await tester.pump(const Duration(seconds:1));
   expect(find.text('هدف‌ها'), findsWidgets);
