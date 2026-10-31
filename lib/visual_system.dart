@@ -84,4 +84,27 @@ class GolpoolStyle {
    Text(count==0?'همه تراکنش‌ها توضیح دارند 🌷':'$count تراکنش منتظرند بگی بابت چی بودن.',
     style:const TextStyle(fontSize:13,color:muted)),
    const SizedBox(height:12),FilledButton(onPressed:open,child:const Text('تکمیل خرج‌ها'))]));
+ static Widget budgetGauge({required int spent,required int limit}) {
+   final fraction=limit<=0?0.0:(spent/limit).clamp(0.0,1.0).toDouble();
+   return panel(color:const Color(0xfffff8fb),child:Column(children:[
+     const Text('نمای کلی بودجه ماه',style:TextStyle(fontSize:17,fontWeight:FontWeight.w800,color:ink)),
+     const SizedBox(height:18),
+     SizedBox(width:170,height:170,child:Stack(alignment:Alignment.center,children:[
+       SizedBox(width:166,height:166,child:CircularProgressIndicator(
+         value:fraction,strokeWidth:14,strokeCap:StrokeCap.round,
+         backgroundColor:const Color(0xfff5d8e3),color:rose)),
+       Column(mainAxisSize:MainAxisSize.min,children:[
+         Text('${(fraction*100).round()}٪',style:const TextStyle(fontSize:35,fontWeight:FontWeight.w900,color:ink)),
+         const Text('مصرف‌شده',style:TextStyle(color:muted,fontSize:12))
+       ])
+     ])),
+     const SizedBox(height:15),
+     Row(children:[
+       Expanded(child:_stat('هزینه این ماه',money(spent),Icons.trending_up_rounded,const Color(0xffffe8ef))),
+       const SizedBox(width:10),
+       Expanded(child:_stat('بودجه باقی‌مانده',money((limit-spent).clamp(0,limit)),Icons.savings_outlined,const Color(0xffe8f8f2)))
+     ])
+   ]));
+ }
+
 }
