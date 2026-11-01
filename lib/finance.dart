@@ -78,7 +78,7 @@ class MoneyMath {
     final amount=debt['amount'];
     final settled=debt['paid'];
     if(amount is! num)return 0;
-    if(settled is num)return (amount.round()-settled.round()).clamp(0,amount.round());
+    if(settled is num)return (amount.round()-settled.round()).clamp(0,amount.round()).toInt();
     return debt['settled']==true?0:amount.round();
   }
 
