@@ -65,7 +65,7 @@ class MoneyMath {
       final from=proposed['from'];
       final to=proposed['to'];
       if(from is! String||to is! String||from==to||
-         !openings.containsKey(from)||!openings.containsKey(to))return false;
+         !openings.containsKey(from)||!openings.containsKey(to)){return false;}
     }
     for(final name in openings.keys){
       final balance=accountBalance(name,openings,remainder);
