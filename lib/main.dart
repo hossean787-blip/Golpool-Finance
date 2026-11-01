@@ -74,7 +74,7 @@ class _HomeState extends State<Home>{
     final todayAmount=MoneyMath.spentToday(items,date());
     final total=budgets.values.fold<int>(0,(s,n)=>s+n);
     final used=budgets.keys.fold<int>(0,(s,c)=>s+MoneyMath.categorySpent(items,c,date().substring(0,7)));
-    return ListView(children:[
+    return ListView(key:const PageStorageKey('home-scroll'),children:[
       GolpoolStyle.welcomeBanner().animate().fadeIn(duration:500.ms).slideY(begin:-.08,end:0),
       GolpoolStyle.summary(today:money(todayAmount),remaining:money(total-used)),
       GolpoolStyle.section('خرج‌ها به تفکیک دسته'),ExpenseChart(items:items,budgets:budgets),
@@ -84,7 +84,7 @@ class _HomeState extends State<Home>{
    case 1:
     final matching=items.reversed.where((t)=>(txFilter=='all'||t['type']==txFilter)&&
       (txSearch.trim().isEmpty||t['note'].toString().contains(txSearch.trim())||t['category'].toString().contains(txSearch.trim()))).toList();
-    return ListView(children:[
+    return ListView(key:const PageStorageKey('transactions-scroll'),children:[
     GolpoolStyle.panel(child:TextField(onChanged:(v)=>setState(()=>txSearch=v),
       decoration:const InputDecoration(prefixIcon:Icon(Icons.search),hintText:'جست‌وجوی تراکنش‌ها',border:InputBorder.none))),
     Wrap(spacing:8,children:[for(final entry in {'all':'همه','expense':'برداشت','income':'واریز','transfer':'انتقال'}.entries)
@@ -101,8 +101,9 @@ class _HomeState extends State<Home>{
         height:110,fit:BoxFit.cover))),
       TextButton.icon(onPressed:()=>attachReceipt(t),icon:const Icon(Icons.add_a_photo_outlined),
         label:Text(t['receipt'] is String?'تعویض تصویر رسید':'افزودن تصویر رسید'))]))),
-    if(matching.isEmpty)tile('تراکنشی پیدا نشد','از جست‌وجو یا فیلتر دیگری استفاده کن')]);
-   case 2:return ListView(children:[
+    if(matching.isEmpty)tile('تراکنشی پیدا نشد','از جست‌وجو یا فیلتر دیگری استفاده کن'),
+    const SizedBox(height:75)]);
+   case 2:return ListView(key:const PageStorageKey('budget-scroll'),children:[
     GolpoolStyle.section('بودجه‌بندی ماهانه'),
     GolpoolStyle.budgetGauge(spent:MoneyMath.expensesForMonth(items,date().substring(0,7)),limit:budgets.values.fold<int>(0,(a,b)=>a+b)),
     GolpoolStyle.panel(child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
@@ -114,7 +115,7 @@ class _HomeState extends State<Home>{
       final used=MoneyMath.categorySpent(items,e.key,date().substring(0,7));
       return InkWell(onTap:()=>editBudget(e.key),child:GolpoolStyle.categoryBudget(e.key,money(used),money(e.value),e.value==0?0:used/e.value));
     })]);
-   case 3:return ListView(children:[
+   case 3:return ListView(key:const PageStorageKey('goals-scroll'),children:[
     GolpoolStyle.section('هدف‌های پس‌انداز'),
     ...goals.map((g)=>Column(children:[
       if(g['image'] is String)GolpoolStyle.panel(child:ClipRRect(
@@ -127,8 +128,9 @@ class _HomeState extends State<Home>{
         label:const Text('تصویر هدف'))
     ])),
     ...goals.map((g)=>Row(children:[Expanded(child:OutlinedButton.icon(onPressed:()=>editGoal(g),icon:const Icon(Icons.tune),label:Text('مدیریت ${g['name']}'))),const SizedBox(width:9),IconButton(onPressed:()=>goalHistory(g),icon:const Icon(Icons.history),tooltip:'تاریخچه هدف')])),
+    if(goals.isEmpty)tile('اولین هدف پس‌اندازت را بساز','با یک هدف کوچک شروع کن 🌷'),
     FilledButton.icon(onPressed:addGoal,icon:const Icon(Icons.add),label:const Text('هدف جدید'))]);
-   default:return ListView(children:[
+   default:return ListView(key:const PageStorageKey('more-scroll'),children:[
     tile('کارت‌های بانکی',cards.join('، ')),
     FilledButton(onPressed:addCard,child:const Text('افزودن کارت')),
     OutlinedButton.icon(onPressed:transferMoney,icon:const Icon(Icons.swap_horiz),label:const Text('انتقال بین حساب‌ها')),
@@ -151,7 +153,8 @@ class _HomeState extends State<Home>{
     FilledButton.tonalIcon(onPressed:addRecurring,icon:const Icon(Icons.add),label:const Text('هزینه تکراری جدید')),
     GolpoolStyle.section('قرض‌ها'),
     ...debts.map((d)=>GolpoolStyle.panel(child:ListTile(title:Text(d['person'].toString()),subtitle:Text('${d['direction']=='borrowed'?'قرض گرفته‌ام':'قرض داده‌ام'} · مانده ${money(MoneyMath.debtRemaining(d))}'),trailing:IconButton(onPressed:()=>settleDebt(d),icon:const Icon(Icons.payments_outlined))))),
-    FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
+    FilledButton(onPressed:addDebt,child:const Text('ثبت قرض')),
+    const SizedBox(height:24)]);
   }
  }
  Future<void> unlockDevice()async {
@@ -484,7 +487,7 @@ class _HomeState extends State<Home>{
  }
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
   appBar:AppBar(toolbarHeight:83,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('یه همراه کوچولو برای پول‌هات 🌸',style:TextStyle(fontSize:12,color:GolpoolStyle.muted)),const SizedBox(height:4),Text(['خانه','تراکنش‌ها','بودجه ماهانه','هدف‌های من','بیشتر'][tab],style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:GolpoolStyle.ink))]),actions:[Padding(padding:const EdgeInsets.only(left:14),child:GolpoolStyle.bubble(Icons.notifications_none_rounded))]),
-  body:!dataReady?const Center(child:CircularProgressIndicator()):!unlocked?Center(child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.lock_outline,size:55,color:GolpoolStyle.rose),const SizedBox(height:15),const Text('ورود امن به گل‌پول'),const SizedBox(height:14),FilledButton.icon(onPressed:unlockDevice,icon:const Icon(Icons.fingerprint),label:const Text('بازکردن قفل دستگاه'))])):secureError?const Center(child:Text('خطای ذخیره‌سازی امن؛ برای حفاظت از داده‌ها ثبت اطلاعات متوقف شد.')):Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:screen()),
+  body:!dataReady?const Center(child:CircularProgressIndicator()):!unlocked?Center(child:Column(mainAxisAlignment:MainAxisAlignment.center,children:[const Icon(Icons.lock_outline,size:55,color:GolpoolStyle.rose),const SizedBox(height:15),const Text('ورود امن به گل‌پول'),const SizedBox(height:14),FilledButton.icon(onPressed:unlockDevice,icon:const Icon(Icons.fingerprint),label:const Text('بازکردن قفل دستگاه'))])):secureError?const Center(child:Text('خطای ذخیره‌سازی امن؛ برای حفاظت از داده‌ها ثبت اطلاعات متوقف شد.')):SafeArea(top:false,child:Padding(padding:const EdgeInsets.symmetric(horizontal:16),child:AnimatedSwitcher(duration:const Duration(milliseconds:230),switchInCurve:Curves.easeOutCubic,switchOutCurve:Curves.easeInCubic,child:KeyedSubtree(key:ValueKey(tab),child:screen())))),
   floatingActionButton:tab==1&&dataReady&&!secureError&&unlocked?FloatingActionButton(backgroundColor:GolpoolStyle.rose,foregroundColor:Colors.white,onPressed:addTx,child:const Icon(Icons.add)):null,
   bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:unlocked?(v)=>setState(()=>tab=v):null,destinations:const [
    NavigationDestination(icon:Icon(Icons.home_outlined),label:'خانه'),
