@@ -14,13 +14,19 @@ class GolpoolStyle {
  static String money(num value)=>'${formatter.format(value.round())} تومان';
  static ThemeData get theme=>ThemeData(
   useMaterial3:true,scaffoldBackgroundColor:background,
-  colorScheme:ColorScheme.fromSeed(seedColor:rose),
+  colorScheme:ColorScheme.fromSeed(seedColor:rose,brightness:Brightness.light,surface:Colors.white),
+  visualDensity:VisualDensity.standard,
+  splashFactory:InkRipple.splashFactory,
+  pageTransitionsTheme:const PageTransitionsTheme(builders:{TargetPlatform.android:ZoomPageTransitionsBuilder(),TargetPlatform.iOS:CupertinoPageTransitionsBuilder()}),
+  inputDecorationTheme:InputDecorationTheme(filled:true,fillColor:Colors.white,contentPadding:const EdgeInsets.symmetric(horizontal:16,vertical:15),border:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:line)),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:line)),focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:rose,width:1.6))),
+  cardTheme:CardThemeData(color:Colors.white,elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(23))),
+  dividerTheme:const DividerThemeData(color:line,thickness:1),
   appBarTheme:const AppBarTheme(backgroundColor:background,foregroundColor:ink,scrolledUnderElevation:0),
-  navigationBarTheme:NavigationBarThemeData(backgroundColor:Colors.white,
+  navigationBarTheme:NavigationBarThemeData(backgroundColor:Colors.white,elevation:0,height:75,
    indicatorColor:const Color(0xffffe5ee),labelTextStyle:WidgetStateProperty.all(const TextStyle(fontSize:11,color:ink))),
   filledButtonTheme:FilledButtonThemeData(style:FilledButton.styleFrom(backgroundColor:rose,foregroundColor:Colors.white,
     padding:const EdgeInsets.symmetric(horizontal:22,vertical:14),shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(17)))),
-  textTheme:const TextTheme(bodyMedium:TextStyle(color:ink),bodyLarge:TextStyle(color:ink)));
+  textTheme:const TextTheme(bodyMedium:TextStyle(color:ink,fontSize:14,height:1.6),bodyLarge:TextStyle(color:ink,fontSize:16,height:1.55),titleMedium:TextStyle(color:ink,fontWeight:FontWeight.w800,fontSize:17)));
  static Widget bubble(IconData icon)=>Container(width:43,height:43,decoration:BoxDecoration(
   color:const Color(0xffffe9f0),borderRadius:BorderRadius.circular(15)),
   child:Icon(icon,color:rose,size:22));
@@ -77,13 +83,14 @@ class GolpoolStyle {
     Expanded(child:Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:15))),
     Text('${(percent*100).round()}٪',style:const TextStyle(color:rose,fontWeight:FontWeight.bold))]),
    progress(percent),Text('$used از $limit',style:const TextStyle(color:muted,fontSize:12)),
-   if(percent>=.7)const Padding(padding:EdgeInsets.only(top:8),child:Text(
+   if(percent>=1)const Padding(padding:EdgeInsets.only(top:8),child:Text('بودجه این دسته مصرف شده است؛ هزینه‌های بعدی را با دقت بررسی کن.',style:TextStyle(color:rose,fontSize:12))),
+   if(percent>=.7 && percent<1)const Padding(padding:EdgeInsets.only(top:8),child:Text(
     'یه یادآوری کوچولو؛ داری به سقف بودجه نزدیک می‌شی 💗',style:TextStyle(color:rose,fontSize:12)))]));
  static Widget pending(int count,VoidCallback open)=>panel(color:const Color(0xfffff7fa),
   child:Column(crossAxisAlignment:CrossAxisAlignment.stretch,children:[
    Text(count==0?'همه تراکنش‌ها توضیح دارند 🌷':'$count تراکنش منتظرند بگی بابت چی بودن.',
     style:const TextStyle(fontSize:13,color:muted)),
-   const SizedBox(height:12),FilledButton(onPressed:open,child:const Text('تکمیل خرج‌ها'))]));
+   if(count>0)...[const SizedBox(height:12),FilledButton(onPressed:open,child:const Text('تکمیل خرج‌ها'))]]));
  static Widget budgetGauge({required int spent,required int limit}) {
    final fraction=limit<=0?0.0:(spent/limit).clamp(0.0,1.0).toDouble();
    return panel(color:const Color(0xfffff8fb),child:Column(children:[
