@@ -69,7 +69,7 @@ class MoneyMath {
     }
     for(final name in openings.keys){
       final balance=accountBalance(name,openings,remainder);
-      if(balance!=null&&balance<0)return false;
+      if(balance!=null&&balance<0){return false;}
     }
     return true;
   }
