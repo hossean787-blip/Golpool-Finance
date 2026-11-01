@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golpool/backup_service.dart';
 
@@ -18,4 +19,27 @@ void main() {
   test('short backup password rejected',()async{
     await expectLater(GolpoolBackup.encrypt(dataset,'short'),throwsArgumentError);
   });
+  test('tampered ciphertext fails authentication',()async{
+    final encrypted=await GolpoolBackup.encrypt(dataset,'strong-example-password');
+    final record=Map<String,dynamic>.from(jsonDecode(encrypted) as Map);
+    final original=base64Decode(record['ciphertext'] as String);
+    original[0]^=1;
+    record['ciphertext']=base64Encode(original);
+    await expectLater(GolpoolBackup.decrypt(jsonEncode(record),'strong-example-password'),
+      throwsA(isA<Exception>()));
+  });
+  test('backup format and version are checked',()async{
+    final encrypted=await GolpoolBackup.encrypt(dataset,'strong-example-password');
+    final record=Map<String,dynamic>.from(jsonDecode(encrypted) as Map);
+    record['version']=999;
+    await expectLater(GolpoolBackup.decrypt(jsonEncode(record),'strong-example-password'),
+      throwsA(isA<FormatException>()));
+  });
+  test('backup does not reuse encryption salt and nonce',()async{
+    final first=jsonDecode(await GolpoolBackup.encrypt(dataset,'strong-example-password')) as Map;
+    final second=jsonDecode(await GolpoolBackup.encrypt(dataset,'strong-example-password')) as Map;
+    expect(first['salt'],isNot(second['salt']));
+    expect(first['nonce'],isNot(second['nonce']));
+  });
+
 }
