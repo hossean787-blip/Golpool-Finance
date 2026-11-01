@@ -52,4 +52,34 @@ class MoneyMath {
     .where((x)=>x['type']=='expense' && x['date'] is String && (x['date'] as String).startsWith(month))
     .fold<int>(0,(sum,x)=>sum+(x['amount'] as num).round());
 
+  /// Validate a proposed ledger mutation, excluding the original row for edits.
+  static bool canPost(List<Map<String,dynamic>> rows,Map<String,int> openings,
+      Map<String,dynamic> proposed,{Map<String,dynamic>? original}) {
+    final amount=proposed['amount'];
+    if(amount is! int || amount<=0)return false;
+    final type=proposed['type'];
+    if(type!='expense' && type!='income' && type!='transfer')return false;
+    final remainder=rows.where((row)=>!identical(row,original)).toList();
+    remainder.add(proposed);
+    if(type=='transfer'){
+      final from=proposed['from'];
+      final to=proposed['to'];
+      if(from is! String||to is! String||from==to||
+         !openings.containsKey(from)||!openings.containsKey(to))return false;
+    }
+    for(final name in openings.keys){
+      final balance=accountBalance(name,openings,remainder);
+      if(balance!=null&&balance<0)return false;
+    }
+    return true;
+  }
+
+  static int debtRemaining(Map<String,dynamic> debt){
+    final amount=debt['amount'];
+    final settled=debt['paid'];
+    if(amount is! num)return 0;
+    if(settled is num)return (amount.round()-settled.round()).clamp(0,amount.round());
+    return debt['settled']==true?0:amount.round();
+  }
+
 }
