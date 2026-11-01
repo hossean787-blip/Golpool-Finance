@@ -33,7 +33,7 @@ class GolpoolStyle {
  static Widget panel({required Widget child,Color color=Colors.white})=>Container(
   margin:const EdgeInsets.only(bottom:14),padding:const EdgeInsets.all(15),
   decoration:BoxDecoration(color:color,border:Border.all(color:line),borderRadius:BorderRadius.circular(25),
-  boxShadow:[BoxShadow(color:rose.withValues(alpha:.09),blurRadius:23,offset:const Offset(0,8))]),child:child);
+  boxShadow:[BoxShadow(color:rose.withValues(alpha:.09),blurRadius:23,offset:const Offset(0,8))]),child:Material(type:MaterialType.transparency,child:child));
  static Widget section(String title)=>Padding(padding:const EdgeInsets.only(top:17,bottom:11,right:3),
   child:Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:18,color:ink)));
  static Widget progress(double ratio,{Color color=rose})=>Padding(padding:const EdgeInsets.symmetric(vertical:10),
