@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golpool/backup_service.dart';
 
 void main() {
-  final dataset=<String,dynamic>{'items':[{'type':'expense','amount':12000,'note':'خرید'}],
+  final dataset=<String,dynamic>{'items':[{'type':'expense','date':'2026-10-31','amount':12000,'note':'خرید'}],
     'cards':['بانک'], 'budgets':{'خوراک':100000},'goals':<dynamic>[],'debts':<dynamic>[]};
   test('encrypted backup roundtrip preserves financial information', () async {
     const password='strong-example-password';
@@ -40,6 +40,14 @@ void main() {
     final second=jsonDecode(await GolpoolBackup.encrypt(dataset,'strong-example-password')) as Map;
     expect(first['salt'],isNot(second['salt']));
     expect(first['nonce'],isNot(second['nonce']));
+  });
+
+  test('authenticated but invalid financial rows are rejected',()async{
+    final invalid=<String,dynamic>{...dataset,
+      'items':[{'type':'expense','date':'2026-10-31','amount':-10}]};
+    final encrypted=await GolpoolBackup.encrypt(invalid,'strong-example-password');
+    await expectLater(GolpoolBackup.decrypt(encrypted,'strong-example-password'),
+      throwsA(isA<FormatException>()));
   });
 
 }
