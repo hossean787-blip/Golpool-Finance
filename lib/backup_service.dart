@@ -39,6 +39,29 @@ class GolpoolBackup {
         decoded['budgets'] is! Map || decoded['goals'] is! List || decoded['debts'] is! List){
       throw const FormatException('Invalid backup data');
     }
+    for(final raw in decoded['items'] as List){
+      if(raw is! Map || raw['amount'] is! num || (raw['amount'] as num)<=0 ||
+         raw['type'] is! String || !['income','expense','transfer'].contains(raw['type']) ||
+         raw['date'] is! String){
+        throw const FormatException('Invalid financial transaction in backup');
+      }
+    }
+    for(final raw in decoded['goals'] as List){
+      if(raw is! Map || raw['saved'] is! num || raw['target'] is! num ||
+         (raw['saved'] as num)<0 || (raw['target'] as num)<=0){
+        throw const FormatException('Invalid savings goal in backup');
+      }
+    }
+    for(final raw in decoded['debts'] as List){
+      if(raw is! Map || raw['amount'] is! num || (raw['amount'] as num)<=0){
+        throw const FormatException('Invalid debt in backup');
+      }
+    }
+    for(final entry in (decoded['budgets'] as Map).entries){
+      if(entry.key is! String || entry.value is! num || (entry.value as num)<0){
+        throw const FormatException('Invalid budget in backup');
+      }
+    }
     return decoded;
   }
 }
