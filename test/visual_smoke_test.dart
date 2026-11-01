@@ -16,10 +16,10 @@ void main() {
   expect(find.text('گل‌پول 🌸'), findsNothing);
   expect(find.text('خرج امروز'), findsOneWidget);
   expect(find.text('حساب‌های من'), findsOneWidget);
-  await tester.tap(find.byIcon(Icons.pie_chart_outline));
+  await tester.tap(find.descendant(of:find.byType(NavigationBar),matching:find.byIcon(Icons.pie_chart_outline)));
   await tester.pump(const Duration(seconds:1));
   expect(find.text('نمای کلی بودجه ماه'), findsOneWidget);
-  await tester.tap(find.byIcon(Icons.favorite_outline));
+  await tester.tap(find.descendant(of:find.byType(NavigationBar),matching:find.byIcon(Icons.favorite_outline)));
   await tester.pump(const Duration(seconds:1));
   expect(find.text('هدف‌ها'), findsWidgets);
  });
@@ -34,15 +34,15 @@ void main() {
    await tester.tap(find.byIcon(Icons.receipt_long_outlined));
    await tester.pump(const Duration(seconds:1));
    expect(find.text('جست‌وجوی تراکنش‌ها'),findsOneWidget);
-   await tester.tap(find.byIcon(Icons.pie_chart_outline));
+   await tester.tap(find.descendant(of:find.byType(NavigationBar),matching:find.byIcon(Icons.pie_chart_outline)));
    await tester.pump(const Duration(seconds:1));
    expect(find.text('نمای کلی بودجه ماه'),findsOneWidget);
-   await tester.tap(find.byIcon(Icons.favorite_outline));
+   await tester.tap(find.descendant(of:find.byType(NavigationBar),matching:find.byIcon(Icons.favorite_outline)));
    await tester.pump(const Duration(seconds:1));
    expect(find.text('هدف‌های پس‌انداز'),findsOneWidget);
    await tester.tap(find.byIcon(Icons.menu));
    await tester.pump(const Duration(seconds:1));
-   expect(find.text('پشتیبان‌گیری امن'),findsOneWidget);
+   expect(find.text('کارت‌های بانکی'),findsOneWidget);
  });
 
 }
