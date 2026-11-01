@@ -149,7 +149,8 @@ class _HomeState extends State<Home>{
     GolpoolStyle.section('هزینه‌های تکراری'),
     ...recurring.map(recurringTile),
     FilledButton.tonalIcon(onPressed:addRecurring,icon:const Icon(Icons.add),label:const Text('هزینه تکراری جدید')),
-    ...debts.map((d)=>GolpoolStyle.panel(child:ListTile(title:Text(d['person'].toString()),subtitle:Text(money(d['amount'] as num)),trailing:Switch(value:d['settled']==true,onChanged:(v){d['settled']=v;changed();})))),
+    GolpoolStyle.section('قرض‌ها'),
+    ...debts.map((d)=>GolpoolStyle.panel(child:ListTile(title:Text(d['person'].toString()),subtitle:Text('${d['direction']=='borrowed'?'قرض گرفته‌ام':'قرض داده‌ام'} · مانده ${money(MoneyMath.debtRemaining(d))}'),trailing:IconButton(onPressed:()=>settleDebt(d),icon:const Icon(Icons.payments_outlined))))),
     FilledButton(onPressed:addDebt,child:const Text('ثبت قرض'))]);
   }
  }
@@ -275,12 +276,10 @@ class _HomeState extends State<Home>{
   final category=await ask('دسته‌بندی (مثلاً خوراک یا حقوق)');if(category==null)return;
   String? account;
   if(cards.isNotEmpty){if(!mounted)return;account=await chooseAccount('حساب مرتبط');if(account==null)return;}
-  if(kind=='expense'&&account!=null){
-    final bal=MoneyMath.accountBalance(account,openingBalances,items);
-    if(bal!=null&&sum>bal){info('مبلغ بیشتر از مانده حساب است.');return;}
-  }
-  items.add({'type':kind,'date':date(),'amount':sum,'note':note,
-    'category':category.trim().isEmpty?'سایر':category.trim(),'account':account});await changed();
+  final row=<String,dynamic>{'type':kind,'date':date(),'amount':sum,'note':note,
+    'category':category.trim().isEmpty?'سایر':category.trim(),'account':account};
+  if(!MoneyMath.canPost(items,openingBalances,row)){info('تراکنش موجب منفی‌شدن مانده حساب می‌شود.');return;}
+  items.add(row);await changed();
  }
  Future<void> explain(Map<String,dynamic> t)async{final s=await ask('توضیح تراکنش');if(s!=null&&s.trim().isNotEmpty){t['note']=s.trim();changed();}}
  Future<void> splitTx(Map<String,dynamic> transaction)async{
@@ -308,9 +307,12 @@ class _HomeState extends State<Home>{
       children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'expense'),child:const Text('هزینه')),
                 SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'income'),child:const Text('درآمد'))]));
    if(kind==null)return;
-   tx.remove('parts');
-   tx..['amount']=amount..['note']=note.trim()..['category']=category.trim()..['type']=kind;
-   await changed();
+   final proposal=Map<String,dynamic>.from(tx)..remove('parts');
+   proposal..['amount']=amount..['note']=note.trim()..['category']=category.trim()..['type']=kind;
+   if(!MoneyMath.canPost(items,openingBalances,proposal,original:tx)){
+     info('ویرایش موجب مانده نامعتبر حساب می‌شود.');return;
+   }
+   tx..clear()..addAll(proposal);await changed();
  }
  Future<void> deleteTx(Map<String,dynamic> tx)async{
    final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
@@ -399,9 +401,10 @@ class _HomeState extends State<Home>{
   if(amount==null||amount<=0)return;
   final balance=MoneyMath.accountBalance(source,openingBalances,items);
   if(balance!=null&&amount>balance){info('مبلغ از مانده حساب مبدأ بیشتر است.');return;}
-  items.add({'type':'transfer','date':date(),'amount':amount,'note':'انتقال از $source به $destination',
-    'category':'انتقال','from':source,'to':destination});
-  await changed();
+  final row=<String,dynamic>{'type':'transfer','date':date(),'amount':amount,'note':'انتقال از $source به $destination',
+    'category':'انتقال','from':source,'to':destination};
+  if(!MoneyMath.canPost(items,openingBalances,row)){info('مانده مبدأ برای انتقال کافی نیست.');return;}
+  items.add(row);await changed();
  }
 
  Future<void> addBudget()async{
@@ -459,10 +462,25 @@ class _HomeState extends State<Home>{
        FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('حذف'))]));
    if(yes==true){try{await reminders.cancelRecurring(entry['id'] as int);}catch(_){}recurring.remove(entry);await changed();}
  }
+ Future<void> settleDebt(Map<String,dynamic> debt)async{
+   final outstanding=MoneyMath.debtRemaining(debt);
+   if(outstanding==0){info('این قرض تسویه شده است.');return;}
+   final paid=int.tryParse(await ask('مبلغ تسویه')??'');
+   if(paid==null||paid<=0||paid>outstanding){info('مبلغ تسویه نامعتبر است.');return;}
+   debt['paid']=(debt['paid'] is num?(debt['paid'] as num).round():0)+paid;
+   debt['settled']=MoneyMath.debtRemaining(debt)==0;
+   final history=debt['history'];
+   if(history is List){history.add({'date':date(),'amount':paid});}
+   await changed();
+ }
  Future<void> addDebt()async{
   final who=await ask('نام شخص');if(who==null||who.isEmpty)return;
   final sum=int.tryParse(await ask('مبلغ قرض')??'');
-  if(sum!=null&&sum>0){debts.add({'person':who,'amount':sum,'settled':false});changed();}
+  if(sum==null||sum<=0)return;
+  if(!mounted)return;
+  final direction=await showDialog<String>(context:context,builder:(ctx)=>SimpleDialog(title:const Text('نوع قرض'),children:[SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'lent'),child:const Text('قرض داده‌ام')),SimpleDialogOption(onPressed:()=>Navigator.pop(ctx,'borrowed'),child:const Text('قرض گرفته‌ام'))]));
+  if(direction==null)return;
+  debts.add({'person':who.trim(),'amount':sum,'paid':0,'settled':false,'direction':direction,'history':<dynamic>[]});await changed();
  }
  @override Widget build(BuildContext context)=>Directionality(textDirection:TextDirection.rtl,child:Scaffold(
   appBar:AppBar(toolbarHeight:83,title:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('یه همراه کوچولو برای پول‌هات 🌸',style:TextStyle(fontSize:12,color:GolpoolStyle.muted)),const SizedBox(height:4),Text(['خانه','تراکنش‌ها','بودجه ماهانه','هدف‌های من','بیشتر'][tab],style:const TextStyle(fontSize:24,fontWeight:FontWeight.w800,color:GolpoolStyle.ink))]),actions:[Padding(padding:const EdgeInsets.only(left:14),child:GolpoolStyle.bubble(Icons.notifications_none_rounded))]),
