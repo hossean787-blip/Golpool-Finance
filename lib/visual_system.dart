@@ -17,7 +17,7 @@ class GolpoolStyle {
   colorScheme:ColorScheme.fromSeed(seedColor:rose,brightness:Brightness.light,surface:Colors.white),
   visualDensity:VisualDensity.standard,
   splashFactory:InkRipple.splashFactory,
-  pageTransitionsTheme:const PageTransitionsTheme(builders:{TargetPlatform.android:ZoomPageTransitionsBuilder(),TargetPlatform.iOS:CupertinoPageTransitionsBuilder()}),
+  pageTransitionsTheme:const PageTransitionsTheme(builders:{TargetPlatform.android:ZoomPageTransitionsBuilder(),TargetPlatform.iOS:ZoomPageTransitionsBuilder()}),
   inputDecorationTheme:InputDecorationTheme(filled:true,fillColor:Colors.white,contentPadding:const EdgeInsets.symmetric(horizontal:16,vertical:15),border:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:line)),enabledBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:line)),focusedBorder:OutlineInputBorder(borderRadius:BorderRadius.circular(16),borderSide:const BorderSide(color:rose,width:1.6))),
   cardTheme:CardThemeData(color:Colors.white,elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(23))),
   dividerTheme:const DividerThemeData(color:line,thickness:1),
