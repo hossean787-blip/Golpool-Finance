@@ -1,0 +1,33 @@
+name: Golpool iPhone release build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/ios-device.yml']
+permissions:
+  contents: read
+jobs:
+  iphone:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Prepare iOS runner
+        run: |
+          flutter create --no-pub --platforms=ios --org ir.golpool --project-name golpool .
+          git restore -- lib pubspec.yaml
+          /usr/libexec/PlistBuddy -c 'Add :NSFaceIDUsageDescription string برای باز کردن گل‌پول' ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c 'Add :NSPhotoLibraryUsageDescription string برای انتخاب تصویر رسید' ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c 'Add :NSCameraUsageDescription string برای عکس گرفتن از رسید' ios/Runner/Info.plist
+          git ls-files --error-unmatch test/widget_test.dart >/dev/null 2>&1 || rm -f test/widget_test.dart
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter build ios --release --no-codesign
+      - run: ditto -c -k --keepParent build/ios/iphoneos/Runner.app Golpool-iPhone-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Golpool-iPhone-unsigned
+          path: Golpool-iPhone-unsigned.zip
