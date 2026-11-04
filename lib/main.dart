@@ -77,6 +77,36 @@ class _HomeState extends State<Home>{
     return ListView(key:const PageStorageKey('home-scroll'),children:[
       GolpoolStyle.welcomeBanner().animate().fadeIn(duration:500.ms).slideY(begin:-.08,end:0),
       GolpoolStyle.summary(today:money(todayAmount),remaining:money(total-used)),
+      const SizedBox(height:12),
+      Semantics(
+        label:'دسترسی سریع به عملیات مالی',
+        child:Wrap(
+          spacing:8,
+          runSpacing:8,
+          children:[
+            ActionChip(
+              avatar:const Icon(Icons.add_circle_outline,size:19),
+              label:const Text('ثبت تراکنش'),
+              onPressed:addTx,
+            ),
+            ActionChip(
+              avatar:const Icon(Icons.account_balance_wallet_outlined,size:19),
+              label:const Text('بودجه جدید'),
+              onPressed:addBudget,
+            ),
+            ActionChip(
+              avatar:const Icon(Icons.flag_outlined,size:19),
+              label:const Text('هدف پس‌انداز'),
+              onPressed:addGoal,
+            ),
+            ActionChip(
+              avatar:const Icon(Icons.history_rounded,size:19),
+              label:const Text('خرج‌های نامشخص'),
+              onPressed:()=>setState(()=>tab=1),
+            ),
+          ],
+        ),
+      ),
       GolpoolStyle.section('خرج‌ها به تفکیک دسته'),ExpenseChart(items:items,budgets:budgets),
       GolpoolStyle.section('حساب‌های من'),GolpoolStyle.panel(child:Column(children:cards.map((c)=>ListTile(leading:GolpoolStyle.bubble(Icons.credit_card),title:Text(c),subtitle:Text(MoneyMath.accountBalance(c,openingBalances,items)==null?'مانده اولیه ثبت نشده':money(MoneyMath.accountBalance(c,openingBalances,items)!)))).toList())),
       GolpoolStyle.section('خرج‌های بدون توضیح'),GolpoolStyle.pending(MoneyMath.pending(items).length,()=>setState(()=>tab=1)),GolpoolStyle.section('آخرین تراکنش‌ها'),
